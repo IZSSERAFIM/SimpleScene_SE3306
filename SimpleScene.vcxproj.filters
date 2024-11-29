@@ -51,6 +51,27 @@
     <ClInclude Include="stb_image.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="model.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="shader_m.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="mesh.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="shader_t.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="midpoint_disp_terrain.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="koch_snowflake.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="photon.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="lightcube_fragment.glsl">
@@ -71,16 +92,58 @@
     <None Include="board_fragment.glsl">
       <Filter>源文件</Filter>
     </None>
-    <None Include="snowflake_vertex.glsl">
+    <None Include="table_model_vertex.glsl">
       <Filter>源文件</Filter>
     </None>
-    <None Include="snowflake_fragment.glsl">
+    <None Include="table_model_fragment.glsl">
       <Filter>源文件</Filter>
     </None>
-    <None Include="ball_vertex.glsl">
+    <None Include="terrain_vertex.glsl">
       <Filter>源文件</Filter>
     </None>
-    <None Include="ball_fragment.glsl">
+    <None Include="terrain_fragment.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="skybox_fragment.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="skybox_vertex.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="terrain_tcs.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="terrain_tes.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="koch_snowflake_vertex.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="koch_snowflake_fragment.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="windmill_fragment.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="windmill_vertex.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="christmas_tree_model_fragment.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="christmas_tree_model_vertex.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="light_strip_fragment.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="light_strip_vertex.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="photon_fragment.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="photon_vertex.glsl">
       <Filter>源文件</Filter>
     </None>
   </ItemGroup>
@@ -112,13 +175,5 @@
     <ClCompile Include="imgui_widgets.cpp">
       <Filter>头文件</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="frame_texture.jpg">
-      <Filter>资源文件</Filter>
-    </Image>
-    <Image Include="board_texture.jpg">
-      <Filter>资源文件</Filter>
-    </Image>
   </ItemGroup>
 </Project>

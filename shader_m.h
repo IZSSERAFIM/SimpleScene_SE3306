@@ -1,4 +1,4 @@
-﻿#ifndef SHADER_H
+#ifndef SHADER_H
 #define SHADER_H
 
 #include <glad/glad.h>
@@ -29,21 +29,7 @@ public:
 		{
 			// open files
 			vShaderFile.open(vertexPath);
-			if (!vShaderFile) {
-				std::cerr << "Error opening file: " << vertexPath << std::endl;
-				if (vShaderFile.bad()) {
-					std::cerr << "Fatal error: badbit is set." << std::endl;
-				}
-				if (vShaderFile.fail()) {
-					// Print a more detailed error message using strerror
-					std::cerr << "Error details: " << errno << std::endl;
-				}
-				return; // ���߸�������׳��쳣
-			}
 			fShaderFile.open(fragmentPath);
-			if (!fShaderFile) {
-				std::cout << "open error: " << fragmentPath << std::endl;
-			}
 			std::stringstream vShaderStream, fShaderStream;
 			// read file's buffer contents into streams
 			vShaderStream << vShaderFile.rdbuf();
@@ -53,9 +39,7 @@ public:
 			fShaderFile.close();
 			// convert stream into string
 			vertexCode = vShaderStream.str();
-			//std::cout << vertexCode << std::endl;
 			fragmentCode = fShaderStream.str();
-			//std::cout << fragmentCode << std::endl;
 		}
 		catch (std::ifstream::failure& e)
 		{
@@ -85,7 +69,6 @@ public:
 		glDeleteShader(vertex);
 		glDeleteShader(fragment);
 
-		//std::cout << "shader: " << vertexPath << ", " << fragmentPath << " loaded successful" << std::endl;
 	}
 	// activate the shader
 	// ------------------------------------------------------------------------

@@ -117,7 +117,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -135,7 +135,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -149,20 +149,41 @@
     <ClInclude Include="imstb_rectpack.h" />
     <ClInclude Include="imstb_textedit.h" />
     <ClInclude Include="imstb_truetype.h" />
+    <ClInclude Include="koch_snowflake.hpp" />
+    <ClInclude Include="mesh.h" />
+    <ClInclude Include="midpoint_disp_terrain.hpp" />
+    <ClInclude Include="model.h" />
+    <ClInclude Include="photon.hpp" />
     <ClInclude Include="shader.h" />
+    <ClInclude Include="shader_m.h" />
+    <ClInclude Include="shader_t.h" />
     <ClInclude Include="stb_image.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="ball_fragment.glsl" />
-    <None Include="ball_vertex.glsl" />
     <None Include="board_fragment.glsl" />
+    <None Include="christmas_tree_model_fragment.glsl" />
+    <None Include="christmas_tree_model_vertex.glsl" />
+    <None Include="koch_snowflake_fragment.glsl" />
+    <None Include="koch_snowflake_vertex.glsl" />
     <None Include="lightcube_fragment.glsl" />
     <None Include="lightcube_vertex.glsl" />
     <None Include="lighting_fragment.glsl" />
     <None Include="lighting_vertex.glsl" />
     <None Include="board_vertex.glsl" />
-    <None Include="snowflake_fragment.glsl" />
-    <None Include="snowflake_vertex.glsl" />
+    <None Include="light_strip_fragment.glsl" />
+    <None Include="light_strip_vertex.glsl" />
+    <None Include="photon_fragment.glsl" />
+    <None Include="photon_vertex.glsl" />
+    <None Include="table_model_fragment.glsl" />
+    <None Include="table_model_vertex.glsl" />
+    <None Include="skybox_fragment.glsl" />
+    <None Include="skybox_vertex.glsl" />
+    <None Include="terrain_fragment.glsl" />
+    <None Include="terrain_tcs.glsl" />
+    <None Include="terrain_tes.glsl" />
+    <None Include="terrain_vertex.glsl" />
+    <None Include="windmill_fragment.glsl" />
+    <None Include="windmill_vertex.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\..\..\..\..\..\OpenGL\glad\src\glad.c" />
@@ -174,10 +195,6 @@
     <ClCompile Include="imgui_tables.cpp" />
     <ClCompile Include="imgui_widgets.cpp" />
     <ClCompile Include="main.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="board_texture.jpg" />
-    <Image Include="frame_texture.jpg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

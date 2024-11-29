@@ -5,15 +5,20 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "shader.h"
-#include "camera.h"
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+
+#include "shader.h"
+#include "camera.h"
+#include "model.h"
+
+#include "midpoint_disp_terrain.hpp"
+#include "koch_snowflake.hpp"
+#include "photon.hpp"
 
 #include <iostream>
 #include <vector>
@@ -24,13 +29,11 @@
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+unsigned int loadTexture(char const* path);
+unsigned int loadCubemap(vector<std::string> faces); // 加载立方体贴图函数
 void processInput(GLFWwindow* window);
-void generateChalkboardVertices();
-void generateFrameVertices();
-void generateSnowflakes(int count);
-void updateSnowflakes();
-void updateBallPosition();
-std::vector<float> generateSphereVertices(float radius, int sectorCount, int stackCount);
+void generateblackboardVertices();
+std::vector<float> generateLightStripVertices(glm::vec3 coneApex, glm::vec3 coneBase, float baseRadius, int numTurns, int pointsPerTurn);
 
 // 窗口设置
 const unsigned int SCR_WIDTH = 1280;
@@ -61,17 +64,18 @@ ImVec4 left_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
 ImVec4 front_color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 ImVec4 right_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
 ImVec4 windmill_color = ImVec4(0.314f, 0.902f, 0.192f, 1.0f);
-ImVec4 ball_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
 float scale = 2.0f;
 
 // 黑板设置
-std::vector<float> chalkboardVertices;
-glm::vec3 chalkboardSize(1.0f, 0.6f, 0.05f); // Width, height, depth
-glm::vec3 chalkboardPosition(0.0f, 0.3f, 1.51f); // Slightly in front of the front wall
-// 定义边框的顶点，包括纹理坐标
-std::vector<float> frameVertices;
-glm::vec3 frameSize(1.05f, 0.65f, 0.05f); // 比黑板稍大
-glm::vec3 frameThickness(0.05f, 0.05f, 0.05f); // 边框的厚度
+std::vector<float> blackboardVertices;
+glm::vec3 blackboardSize(1.0f, 0.6f, 0.1f); // Width, height, depth
+glm::vec3 blackboardPosition(0.0f, 0.3f, 1.51f); // Slightly in front of the front wall
+
+// 桌子设置
+glm::vec3 tablePosition(-0.2f, -0.19f, 2.2f);
+
+// 圣诞树设置
+glm::vec3 christmas_treePosition(0.0f, 0.13f, 2.1f);
 
 // 风车设置
 // 风车图形的顶点数据
@@ -115,28 +119,54 @@ bool drawWindmill = false;
 float currentAngle = 0.0f;
 bool drawColor = false;
 
-// Snowflake structure
-struct Snowflake {
-	float x, y, z; // Position of the snowflake
-	float size; // Size of the snowflake
-	float speed; // Falling speed of the snowflake
-};
-// Vector to hold snowflakes
-std::vector<Snowflake> snowflakes;
-bool drawSnow = true;
+float skyboxVertices[] = {
+	// positions          
+	-1.0f,  1.0f, -1.0f,
+	-1.0f, -1.0f, -1.0f,
+	 1.0f, -1.0f, -1.0f,
+	 1.0f, -1.0f, -1.0f,
+	 1.0f,  1.0f, -1.0f,
+	-1.0f,  1.0f, -1.0f,
 
-struct Ball {
-	glm::vec3 position;
-	glm::vec3 velocity;
-	float radius;
+	-1.0f, -1.0f,  1.0f,
+	-1.0f, -1.0f, -1.0f,
+	-1.0f,  1.0f, -1.0f,
+	-1.0f,  1.0f, -1.0f,
+	-1.0f,  1.0f,  1.0f,
+	-1.0f, -1.0f,  1.0f,
+
+	 1.0f, -1.0f, -1.0f,
+	 1.0f, -1.0f,  1.0f,
+	 1.0f,  1.0f,  1.0f,
+	 1.0f,  1.0f,  1.0f,
+	 1.0f,  1.0f, -1.0f,
+	 1.0f, -1.0f, -1.0f,
+
+	-1.0f, -1.0f,  1.0f,
+	-1.0f,  1.0f,  1.0f,
+	 1.0f,  1.0f,  1.0f,
+	 1.0f,  1.0f,  1.0f,
+	 1.0f, -1.0f,  1.0f,
+	-1.0f, -1.0f,  1.0f,
+
+	-1.0f,  1.0f, -1.0f,
+	 1.0f,  1.0f, -1.0f,
+	 1.0f,  1.0f,  1.0f,
+	 1.0f,  1.0f,  1.0f,
+	-1.0f,  1.0f,  1.0f,
+	-1.0f,  1.0f, -1.0f,
+
+	-1.0f, -1.0f, -1.0f,
+	-1.0f, -1.0f,  1.0f,
+	 1.0f, -1.0f, -1.0f,
+	 1.0f, -1.0f, -1.0f,
+	-1.0f, -1.0f,  1.0f,
+	 1.0f, -1.0f,  1.0f
 };
-Ball ball = {
-		glm::vec3(0.0f, 0.3f, 2.0f),  // Initial position at the center
-		glm::vec3(0.1f, 0.2f, 0.3f), // Initial velocity
-		0.3f // Ball radius
-};
-bool drawBall = true;
-void updateBallPosition(Ball& ball);
+
+bool drawSnowflake = false;
+
+bool isChristmasTreeLighted = false;
 
 int main()
 {
@@ -196,9 +226,19 @@ int main()
 	// ------------------------------------
 	Shader lightingShader("lighting_vertex.glsl", "lighting_fragment.glsl");
 	Shader lightCubeShader("lightcube_vertex.glsl", "lightcube_fragment.glsl");
-	Shader textureShader("board_vertex.glsl", "board_fragment.glsl");
-	Shader snowflakeShader("snowflake_vertex.glsl", "snowflake_fragment.glsl");
-	Shader ballShader("ball_vertex.glsl", "ball_fragment.glsl");
+	Shader blackBoardShader("board_vertex.glsl", "board_fragment.glsl");
+	Shader windmillShader("windmill_vertex.glsl", "windmill_fragment.glsl");
+	Shader table_modelShader("table_model_vertex.glsl", "table_model_fragment.glsl");
+	Shader christmas_tree_modelShader("christmas_tree_model_vertex.glsl", "christmas_tree_model_fragment.glsl");
+	Shader skyboxShader("skybox_vertex.glsl", "skybox_fragment.glsl");
+	Shader heightMapShader("terrain_vertex.glsl", "terrain_fragment.glsl");
+	Shader lightStripShader("light_strip_vertex.glsl", "light_strip_fragment.glsl");
+	Shader photonShader("photon_vertex.glsl", "photon_fragment.glsl");
+
+	// load models
+	// -----------
+	Model tableModel("./table/table.obj");
+	Model christmas_treeModel("./christmas_tree/christmas_tree.obj");
 
 	// 统一设置用到的坐标信息(每一行前三个数字为点的坐标，后三个为法向量)
 	// ------------------------------------------------------------------
@@ -360,8 +400,6 @@ int main()
 		glEnableVertexAttribArray(1);
 	}
 
-
-
 	// 载入方块灯的顶点信息
 	unsigned int VBO6, lightCubeVAO;
 	{
@@ -394,15 +432,15 @@ int main()
 
 	//设置黑板的VAO和VBO
 	// ------------------------------------------------------------------
-	unsigned int chalkboardVAO, chalkboardVBO;
+	unsigned int blackboardVAO, blackboardVBO;
 	{
-		generateChalkboardVertices();
-		glGenVertexArrays(1, &chalkboardVAO);
-		glGenBuffers(1, &chalkboardVBO);
+		generateblackboardVertices();
+		glGenVertexArrays(1, &blackboardVAO);
+		glGenBuffers(1, &blackboardVBO);
 
-		glBindVertexArray(chalkboardVAO);
-		glBindBuffer(GL_ARRAY_BUFFER, chalkboardVBO);
-		glBufferData(GL_ARRAY_BUFFER, chalkboardVertices.size() * sizeof(float), chalkboardVertices.data(), GL_STATIC_DRAW);
+		glBindVertexArray(blackboardVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, blackboardVBO);
+		glBufferData(GL_ARRAY_BUFFER, blackboardVertices.size() * sizeof(float), blackboardVertices.data(), GL_STATIC_DRAW);
 
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0); // 位置
 		glEnableVertexAttribArray(0);
@@ -412,105 +450,228 @@ int main()
 		glEnableVertexAttribArray(2);
 	}
 
-	// 为边框设置 VAO 和 VBO
-	unsigned int frameVAO, frameVBO;
-	{
-		// 生成边框顶点
-		generateFrameVertices();
-		glGenVertexArrays(1, &frameVAO);
-		glGenBuffers(1, &frameVBO);
+	// skybox VAO
+	unsigned int skyboxVAO, skyboxVBO;
+	glGenVertexArrays(1, &skyboxVAO);
+	glGenBuffers(1, &skyboxVBO);
 
-		glBindVertexArray(frameVAO);
-		glBindBuffer(GL_ARRAY_BUFFER, frameVBO);
-		glBufferData(GL_ARRAY_BUFFER, frameVertices.size() * sizeof(float), frameVertices.data(), GL_STATIC_DRAW);
+	glBindVertexArray(skyboxVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
 
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-		glEnableVertexAttribArray(2);
-	}
+	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
 	// 加载纹理
-	unsigned int frameTexture;
-	glGenTextures(1, &frameTexture);
-	glBindTexture(GL_TEXTURE_2D, frameTexture);
-	// 设置纹理环绕和过滤方式
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	// 加载图像，创建纹理并生成mipmap
-	int width, height, nrChannels;
-	stbi_set_flip_vertically_on_load(true); // 翻转加载的纹理
-	unsigned char* data = stbi_load("frame_texture.jpg", &width, &height, &nrChannels, 0);
-	if (data)
+	unsigned int diffuseMap = loadTexture("./textures/blackboard.jpg");
+	unsigned int specularMap = loadTexture("./textures/blackboard_specular.png");
+	vector<std::string> faces
 	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-		glGenerateMipmap(GL_TEXTURE_2D);
+		"./skybox/right.jpg",
+		"./skybox/left.jpg",
+		"./skybox/top.jpg",
+		"./skybox/bottom.jpg",
+		"./skybox/front.jpg",
+		"./skybox/back.jpg"
+	};
+	unsigned int cubemapTexture = loadCubemap(faces);
+
+	// shader configuration
+	// --------------------
+	blackBoardShader.use();
+	blackBoardShader.setInt("material.diffuse", 0);
+	blackBoardShader.setInt("material.specular", 1);
+	skyboxShader.use();
+	skyboxShader.setInt("skybox", 0);
+
+	// terrain
+	// ------------------------------------------------------------------
+	int width = 32;
+	int height = 32;
+	float minHeight = 0.0f;
+	float maxHeight = 4.0f;
+	float roughness = 1.5f;
+
+	std::vector<float> heightmap;
+	CreateMidpointDisplacementHeightmap(width, height, minHeight, maxHeight, roughness, heightmap);
+
+	// 定义柱体的高度和层数
+	int numLayers = 10; // 层数，可根据需要调整
+	float cylinderHeight = 5.0f; // 柱体的总高度
+	float layerHeightIncrement = (cylinderHeight - maxHeight) / (numLayers - 1); // 每层的高度增量
+
+	// 圆形参数
+	float cx = -0.5f, cz = -0.5f;  // 圆心坐标
+	float r = std::min(width, height) / 2.0f - 1;  // 圆的半径
+
+	// 生成包含高度的顶点数据
+	std::vector<float> cylinder_vertices;
+	for (int layer = 0; layer < numLayers; layer++) {
+		for (int i = 0; i < height; i++) {
+			for (int j = 0; j < width; j++) {
+				// 顶点位置
+				float x = -height / 2.0f + height * i / (float)(height - 1);
+				float z = -width / 2.0f + width * j / (float)(width - 1);
+
+				// 应用圆形投影调整 x 和 z
+				float dx = x - cx;
+				float dz = z - cz;
+				float d = std::sqrt(dx * dx + dz * dz);
+				if (d > r) {
+					float scale = r / d;
+					x = cx + dx * scale;
+					z = cz + dz * scale;
+				}
+
+				float y;
+				if (layer == numLayers - 1) {
+					// 顶层，使用高度图的高度
+					y = cylinderHeight - maxHeight + heightmap[i * width + j]; // 顶层高度加上高度图的值
+				}
+				else {
+					// 其他层，使用均匀的高度
+					y = layer * layerHeightIncrement;
+				}
+
+				cylinder_vertices.push_back(x);
+				cylinder_vertices.push_back(y); // 使用调整后的 y 值
+				cylinder_vertices.push_back(z);
+
+				// 纹理坐标
+				cylinder_vertices.push_back((float)j / (float)(width - 1));
+				cylinder_vertices.push_back((float)i / (float)(height - 1));
+			}
+		}
 	}
-	else
-	{
-		std::cout << "Failed to load texture" << std::endl;
+
+	// 生成连接各层的索引数据
+	std::vector<unsigned int> cylinder_indices;
+	int verticesPerLayer = width * height;
+	for (int layer = 0; layer < numLayers - 1; layer++) {
+		int currentLayerStart = layer * verticesPerLayer;
+		int nextLayerStart = (layer + 1) * verticesPerLayer;
+		for (int i = 0; i < height - 1; i++) {
+			for (int j = 0; j < width - 1; j++) {
+				// 当前层的四个顶点索引
+				int current = currentLayerStart + i * width + j;
+				int currentRight = current + 1;
+				int currentBottom = current + width;
+				int currentBottomRight = currentBottom + 1;
+
+				// 下一层的对应顶点索引
+				int next = nextLayerStart + i * width + j;
+				int nextRight = next + 1;
+				int nextBottom = next + width;
+				int nextBottomRight = nextBottom + 1;
+
+				// 构建侧面四边形，由两个三角形组成
+				// 第一个三角形
+				cylinder_indices.push_back(current);
+				cylinder_indices.push_back(next);
+				cylinder_indices.push_back(currentRight);
+				// 第二个三角形
+				cylinder_indices.push_back(currentRight);
+				cylinder_indices.push_back(next);
+				cylinder_indices.push_back(nextRight);
+
+				// 第二组三角形，连接当前层和下一层
+				// 第三个三角形
+				cylinder_indices.push_back(currentRight);
+				cylinder_indices.push_back(next);
+				cylinder_indices.push_back(currentBottomRight);
+				// 第四个三角形
+				cylinder_indices.push_back(currentBottomRight);
+				cylinder_indices.push_back(next);
+				cylinder_indices.push_back(nextBottomRight);
+
+				// 构建底部（仅在第一层处理）
+				if (layer == 0) {
+					cylinder_indices.push_back(current);
+					cylinder_indices.push_back(currentRight);
+					cylinder_indices.push_back(currentBottom);
+
+					cylinder_indices.push_back(currentRight);
+					cylinder_indices.push_back(currentBottomRight);
+					cylinder_indices.push_back(currentBottom);
+				}
+
+				// 构建顶部（仅在最后一层处理）
+				if (layer == numLayers - 2) {
+					cylinder_indices.push_back(next);
+					cylinder_indices.push_back(nextBottom);
+					cylinder_indices.push_back(nextRight);
+
+					cylinder_indices.push_back(nextRight);
+					cylinder_indices.push_back(nextBottom);
+					cylinder_indices.push_back(nextBottomRight);
+				}
+			}
+		}
 	}
-	stbi_image_free(data);
 
-	unsigned int chalkboardTexture;
-	glGenTextures(1, &chalkboardTexture);
-	glBindTexture(GL_TEXTURE_2D, chalkboardTexture);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	std::cout << "Generated " << cylinder_indices.size() << " indices" << std::endl;
 
-	unsigned char* chalkboardData = stbi_load("board_texture.jpg", &width, &height, &nrChannels, 0);
-	if (chalkboardData)
-	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, chalkboardData);
-		glGenerateMipmap(GL_TEXTURE_2D);
-	}
-	else
-	{
-		std::cout << "Failed to load chalkboard texture" << std::endl;
-	}
-	stbi_image_free(chalkboardData);
+	// 配置 VAO、VBO 和 IBO
+	unsigned int terrainVAO, terrainVBO, terrainIBO;
+	glGenVertexArrays(1, &terrainVAO);
+	glBindVertexArray(terrainVAO);
 
-	generateSnowflakes(100); // 生成 100 个雪花
+	glGenBuffers(1, &terrainVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, terrainVBO);
+	glBufferData(GL_ARRAY_BUFFER, cylinder_vertices.size() * sizeof(float), cylinder_vertices.data(), GL_STATIC_DRAW);
 
-	unsigned int flakeVAO, flakeVBO;
-	{
-		glGenVertexArrays(1, &flakeVAO);
-		glGenBuffers(1, &flakeVBO);
+	// 顶点位置属性
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
 
-		glBindVertexArray(flakeVAO);
-		glBindBuffer(GL_ARRAY_BUFFER, flakeVBO);
-		glBufferData(GL_ARRAY_BUFFER, snowflakes.size() * sizeof(Snowflake), snowflakes.data(), GL_STATIC_DRAW);
+	// 纹理坐标属性
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
 
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(1 * sizeof(float)));
-		glEnableVertexAttribArray(2);
-	}
+	glGenBuffers(1, &terrainIBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, terrainIBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, cylinder_indices.size() * sizeof(unsigned int), cylinder_indices.data(), GL_STATIC_DRAW);
 
-	unsigned int ballVAO, ballVBO;
-	{
-		std::vector<float> sphereVertices = generateSphereVertices(ball.radius, 36, 18); // 36 sectors and 18 stacks
-		glGenVertexArrays(1, &ballVAO);
-		glGenBuffers(1, &ballVBO);
-		glBindVertexArray(ballVAO);
-		glBindBuffer(GL_ARRAY_BUFFER, ballVBO);
-		glBufferData(GL_ARRAY_BUFFER, sphereVertices.size() * sizeof(float), &sphereVertices[0], GL_STATIC_DRAW);
-		// Position attribute
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-		glEnableVertexAttribArray(0);
-		glBindVertexArray(0);
-	}
+	// 加载纹理
+	unsigned int gTextureHeight0 = loadTexture("./textures/rare.jpg");
+	unsigned int gTextureHeight1 = loadTexture("./textures/medium_rare.jpg");
+	unsigned int gTextureHeight2 = loadTexture("./textures/medium_well.png");
+	unsigned int gTextureHeight3 = loadTexture("./textures/well_done.png");
 
+	heightMapShader.use();
+	heightMapShader.setInt("gTextureHeight0", 0);
+	heightMapShader.setInt("gTextureHeight1", 1);
+	heightMapShader.setInt("gTextureHeight2", 2);
+	heightMapShader.setInt("gTextureHeight3", 3);
 
+	// 雪花
+	// 创建雪花系统
+	Shader snowflakeShader("koch_snowflake_vertex.glsl", "koch_snowflake_fragment.glsl");
+	KochSnowflake snowflakeSystem;
+	snowflakeSystem.init();
+
+	// 彩灯带
+	// 生成灯带顶点
+	// 圆锥顶点
+	glm::vec3 coneApex(0.0f, 0.34f, 2.1f);
+	// 圆锥底面圆心
+	glm::vec3 coneBase(0.0f, 0.13f, 2.1f);
+	// 圆锥底面半径
+	float baseRadius = 0.08f;
+	int numTurns = 20;
+	int pointsPerTurn = 100;
+	std::vector<float> lightStripVertices = generateLightStripVertices(coneApex, coneBase, baseRadius, numTurns, pointsPerTurn);
+	unsigned int lightStripVBO, lightStripVAO;
+	glGenVertexArrays(1, &lightStripVAO);
+	glGenBuffers(1, &lightStripVBO);
+	glBindVertexArray(lightStripVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, lightStripVBO);
+	glBufferData(GL_ARRAY_BUFFER, lightStripVertices.size() * sizeof(float), &lightStripVertices[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	// 光粒子
+	PhotonSystem photonSystem(10000, glm::vec3(0.0f, 0.32f, 2.1f));
 
 	// 渲染循环
 	// -----------
@@ -533,13 +694,9 @@ int main()
 		ImGui::Begin("panel");// Create a window called "panel" and append into it.
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
 		ImGui::Text("Cornell bos is scaled by %f times", scale);
-		ImGui::Checkbox("Lock Cursor(Shortcut: L)", &lockCursor);
-		ImGui::Checkbox("Draw firefly", &drawSnow);
-		ImGui::Checkbox("Draw Ball", &drawBall);
-		ImGui::SliderFloat("rotate speed", &rotateSpeed, 0.0f, 10.0f);
+		ImGui::Checkbox("Lock Cursor(Shortcut: SPACE)", &lockCursor);
+		ImGui::SliderFloat("wind mill rotate speed", &rotateSpeed, 0.0f, 10.0f);
 		ImGui::ColorEdit3("windmill color", (float*)&windmill_color);
-		ImGui::ColorEdit3("ball color", (float*)&ball_color);
-		ImGui::ColorEdit3("background color", (float*)&clear_color);
 		ImGui::ColorEdit3("light color", (float*)&light_color);
 		ImGui::ColorEdit3("celling color", (float*)&celling_color);
 		ImGui::ColorEdit3("floor color", (float*)&floor_color);
@@ -547,11 +704,6 @@ int main()
 		ImGui::ColorEdit3("front color", (float*)&front_color);
 		ImGui::ColorEdit3("right color", (float*)&right_color);
 		ImGui::End();
-
-		// 更新雪花位置
-		updateSnowflakes();
-
-		updateBallPosition();
 
 		// 开始渲染
 		// ------
@@ -569,9 +721,32 @@ int main()
 		{
 			//设置光照参数
 			lightingShader.setVec3("objectColor", celling_color.x, celling_color.y, celling_color.z);
-			lightingShader.setVec3("lightColor", light_color.x, light_color.y, light_color.z);
-			lightingShader.setVec3("lightPos", lightPos);
 			lightingShader.setVec3("viewPos", camera.Position);
+			lightingShader.setFloat("material.shininess", 32.0f);
+			// directional light
+			lightingShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
+			lightingShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.05f);
+			lightingShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.4f);
+			lightingShader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.5f);
+			// point light 1
+			lightingShader.setVec3("pointLights[0].position", lightPos);
+			lightingShader.setVec3("pointLights[0].ambient", 0.05f, 0.05f, 0.05f);
+			lightingShader.setVec3("pointLights[0].diffuse", 0.8f, 0.8f, 0.8f);
+			lightingShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
+			lightingShader.setFloat("pointLights[0].constant", 1.0f);
+			lightingShader.setFloat("pointLights[0].linear", 0.09f);
+			lightingShader.setFloat("pointLights[0].quadratic", 0.032f);
+			// spotLight
+			lightingShader.setVec3("spotLight.position", camera.Position);
+			lightingShader.setVec3("spotLight.direction", camera.Front);
+			lightingShader.setVec3("spotLight.ambient", 0.0f, 0.0f, 0.0f);
+			lightingShader.setVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
+			lightingShader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
+			lightingShader.setFloat("spotLight.constant", 1.0f);
+			lightingShader.setFloat("spotLight.linear", 0.09f);
+			lightingShader.setFloat("spotLight.quadratic", 0.032f);
+			lightingShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
+			lightingShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
 
 			// view/projection 变换
 			lightingShader.setMat4("projection", projection);
@@ -591,9 +766,32 @@ int main()
 		{
 			//设置光照参数
 			lightingShader.setVec3("objectColor", floor_color.x, floor_color.y, floor_color.z);
-			lightingShader.setVec3("lightColor", light_color.x, light_color.y, light_color.z);
-			lightingShader.setVec3("lightPos", lightPos);
 			lightingShader.setVec3("viewPos", camera.Position);
+			lightingShader.setFloat("material.shininess", 32.0f);
+			// directional light
+			lightingShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
+			lightingShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.05f);
+			lightingShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.4f);
+			lightingShader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.5f);
+			// point light 1
+			lightingShader.setVec3("pointLights[0].position", lightPos);
+			lightingShader.setVec3("pointLights[0].ambient", 0.05f, 0.05f, 0.05f);
+			lightingShader.setVec3("pointLights[0].diffuse", 0.8f, 0.8f, 0.8f);
+			lightingShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
+			lightingShader.setFloat("pointLights[0].constant", 1.0f);
+			lightingShader.setFloat("pointLights[0].linear", 0.09f);
+			lightingShader.setFloat("pointLights[0].quadratic", 0.032f);
+			// spotLight
+			lightingShader.setVec3("spotLight.position", camera.Position);
+			lightingShader.setVec3("spotLight.direction", camera.Front);
+			lightingShader.setVec3("spotLight.ambient", 0.0f, 0.0f, 0.0f);
+			lightingShader.setVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
+			lightingShader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
+			lightingShader.setFloat("spotLight.constant", 1.0f);
+			lightingShader.setFloat("spotLight.linear", 0.09f);
+			lightingShader.setFloat("spotLight.quadratic", 0.032f);
+			lightingShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
+			lightingShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
 
 			// view/projection 变换
 			lightingShader.setMat4("projection", projection);
@@ -614,9 +812,32 @@ int main()
 		{
 			//设置光照参数
 			lightingShader.setVec3("objectColor", left_color.x, left_color.y, left_color.z);
-			lightingShader.setVec3("lightColor", light_color.x, light_color.y, light_color.z);
-			lightingShader.setVec3("lightPos", lightPos);
 			lightingShader.setVec3("viewPos", camera.Position);
+			lightingShader.setFloat("material.shininess", 32.0f);
+			// directional light
+			lightingShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
+			lightingShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.05f);
+			lightingShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.4f);
+			lightingShader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.5f);
+			// point light 1
+			lightingShader.setVec3("pointLights[0].position", lightPos);
+			lightingShader.setVec3("pointLights[0].ambient", 0.05f, 0.05f, 0.05f);
+			lightingShader.setVec3("pointLights[0].diffuse", 0.8f, 0.8f, 0.8f);
+			lightingShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
+			lightingShader.setFloat("pointLights[0].constant", 1.0f);
+			lightingShader.setFloat("pointLights[0].linear", 0.09f);
+			lightingShader.setFloat("pointLights[0].quadratic", 0.032f);
+			// spotLight
+			lightingShader.setVec3("spotLight.position", camera.Position);
+			lightingShader.setVec3("spotLight.direction", camera.Front);
+			lightingShader.setVec3("spotLight.ambient", 0.0f, 0.0f, 0.0f);
+			lightingShader.setVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
+			lightingShader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
+			lightingShader.setFloat("spotLight.constant", 1.0f);
+			lightingShader.setFloat("spotLight.linear", 0.09f);
+			lightingShader.setFloat("spotLight.quadratic", 0.032f);
+			lightingShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
+			lightingShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
 
 			// view/projection 变换
 			lightingShader.setMat4("projection", projection);
@@ -637,9 +858,32 @@ int main()
 		{
 			//设置光照参数
 			lightingShader.setVec3("objectColor", right_color.x, right_color.y, right_color.z);
-			lightingShader.setVec3("lightColor", light_color.x, light_color.y, light_color.z);
-			lightingShader.setVec3("lightPos", lightPos);
 			lightingShader.setVec3("viewPos", camera.Position);
+			lightingShader.setFloat("material.shininess", 32.0f);
+			// directional light
+			lightingShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
+			lightingShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.05f);
+			lightingShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.4f);
+			lightingShader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.5f);
+			// point light 1
+			lightingShader.setVec3("pointLights[0].position", lightPos);
+			lightingShader.setVec3("pointLights[0].ambient", 0.05f, 0.05f, 0.05f);
+			lightingShader.setVec3("pointLights[0].diffuse", 0.8f, 0.8f, 0.8f);
+			lightingShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
+			lightingShader.setFloat("pointLights[0].constant", 1.0f);
+			lightingShader.setFloat("pointLights[0].linear", 0.09f);
+			lightingShader.setFloat("pointLights[0].quadratic", 0.032f);
+			// spotLight
+			lightingShader.setVec3("spotLight.position", camera.Position);
+			lightingShader.setVec3("spotLight.direction", camera.Front);
+			lightingShader.setVec3("spotLight.ambient", 0.0f, 0.0f, 0.0f);
+			lightingShader.setVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
+			lightingShader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
+			lightingShader.setFloat("spotLight.constant", 1.0f);
+			lightingShader.setFloat("spotLight.linear", 0.09f);
+			lightingShader.setFloat("spotLight.quadratic", 0.032f);
+			lightingShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
+			lightingShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
 
 			// view/projection 变换
 			lightingShader.setMat4("projection", projection);
@@ -660,9 +904,32 @@ int main()
 		{
 			//设置光照参数
 			lightingShader.setVec3("objectColor", front_color.x, front_color.y, front_color.z);
-			lightingShader.setVec3("lightColor", light_color.x, light_color.y, light_color.z);
-			lightingShader.setVec3("lightPos", lightPos);
 			lightingShader.setVec3("viewPos", camera.Position);
+			lightingShader.setFloat("material.shininess", 32.0f);
+			// directional light
+			lightingShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
+			lightingShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.05f);
+			lightingShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.4f);
+			lightingShader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.5f);
+			// point light 1
+			lightingShader.setVec3("pointLights[0].position", lightPos);
+			lightingShader.setVec3("pointLights[0].ambient", 0.05f, 0.05f, 0.05f);
+			lightingShader.setVec3("pointLights[0].diffuse", 0.8f, 0.8f, 0.8f);
+			lightingShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
+			lightingShader.setFloat("pointLights[0].constant", 1.0f);
+			lightingShader.setFloat("pointLights[0].linear", 0.09f);
+			lightingShader.setFloat("pointLights[0].quadratic", 0.032f);
+			// spotLight
+			lightingShader.setVec3("spotLight.position", camera.Position);
+			lightingShader.setVec3("spotLight.direction", camera.Front);
+			lightingShader.setVec3("spotLight.ambient", 0.0f, 0.0f, 0.0f);
+			lightingShader.setVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
+			lightingShader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
+			lightingShader.setFloat("spotLight.constant", 1.0f);
+			lightingShader.setFloat("spotLight.linear", 0.09f);
+			lightingShader.setFloat("spotLight.quadratic", 0.032f);
+			lightingShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
+			lightingShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
 
 			// view/projection 变换
 			lightingShader.setMat4("projection", projection);
@@ -698,77 +965,83 @@ int main()
 		// 绘制黑板
 		{
 			// 激活纹理单元0并绑定黑板纹理
+			blackBoardShader.use();
+			blackBoardShader.setVec3("viewPos", camera.Position);
+			blackBoardShader.setFloat("material.shininess", 32.0f);
+			// directional light
+			blackBoardShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
+			blackBoardShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.05f);
+			blackBoardShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.4f);
+			blackBoardShader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.5f);
+			// point light 1
+			blackBoardShader.setVec3("pointLights[0].position", lightPos);
+			blackBoardShader.setVec3("pointLights[0].ambient", 0.05f, 0.05f, 0.05f);
+			blackBoardShader.setVec3("pointLights[0].diffuse", 0.8f, 0.8f, 0.8f);
+			blackBoardShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
+			blackBoardShader.setFloat("pointLights[0].constant", 1.0f);
+			blackBoardShader.setFloat("pointLights[0].linear", 0.09f);
+			blackBoardShader.setFloat("pointLights[0].quadratic", 0.032f);
+			// spotLight
+			blackBoardShader.setVec3("spotLight.position", camera.Position);
+			blackBoardShader.setVec3("spotLight.direction", camera.Front);
+			blackBoardShader.setVec3("spotLight.ambient", 0.0f, 0.0f, 0.0f);
+			blackBoardShader.setVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
+			blackBoardShader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
+			blackBoardShader.setFloat("spotLight.constant", 1.0f);
+			blackBoardShader.setFloat("spotLight.linear", 0.09f);
+			blackBoardShader.setFloat("spotLight.quadratic", 0.032f);
+			blackBoardShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
+			blackBoardShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
+			// view/projection transformations
+			glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+			glm::mat4 view = camera.GetViewMatrix();
+			blackBoardShader.setMat4("projection", projection);
+			blackBoardShader.setMat4("view", view);
+
+			// world transformation
+			glm::mat4 model = glm::mat4(1.0f);
+			model = glm::translate(model, blackboardPosition);
+			model = glm::scale(model, blackboardSize);
+			blackBoardShader.setMat4("model", model);
+
+			// bind diffuse map
 			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, chalkboardTexture);
-			textureShader.use();
-			textureShader.setInt("texture1", 0); // 将纹理单元传递给着色器
-			textureShader.setBool("useTexture1", true); // 使用黑板纹理
-			textureShader.setVec3("lightColor", light_color.x, light_color.y, light_color.z);
-			textureShader.setVec3("lightPos", lightPos);
-			textureShader.setVec3("viewPos", camera.Position);
-
-			textureShader.setMat4("projection", projection);
-			textureShader.setMat4("view", view);
-
-			model = glm::mat4(1.0f);
-			model = glm::translate(model, chalkboardPosition);
-			model = glm::scale(model, chalkboardSize);
-			textureShader.setMat4("model", model);
-
-			glBindTexture(GL_TEXTURE_2D, chalkboardTexture);
-			glBindVertexArray(chalkboardVAO);
-			glDrawArrays(GL_TRIANGLES, 0, chalkboardVertices.size() / 8);
-		}
-
-		// 渲染边框
-		{
-			// 激活纹理单元0并绑定黑板纹理
+			glBindTexture(GL_TEXTURE_2D, diffuseMap);
+			// bind specular map
 			glActiveTexture(GL_TEXTURE1);
-			glBindTexture(GL_TEXTURE_2D, frameTexture);
-			textureShader.use();
-			textureShader.setInt("texture2", 1); // 将纹理单元传递给着色器
-			textureShader.setBool("useTexture1", false); // 使用黑板纹理
-			textureShader.setVec3("lightColor", light_color.x, light_color.y, light_color.z);
-			textureShader.setVec3("lightPos", lightPos);
-			textureShader.setVec3("viewPos", camera.Position);
+			glBindTexture(GL_TEXTURE_2D, specularMap);
 
-			textureShader.setMat4("projection", projection);
-			textureShader.setMat4("view", view);
-
-			model = glm::mat4(1.0f);
-			model = glm::translate(model, chalkboardPosition);
-			model = glm::scale(model, frameSize);
-			textureShader.setMat4("model", model);
-
-			glBindTexture(GL_TEXTURE_2D, frameTexture);
-			glBindVertexArray(frameVAO);
-			glDrawArrays(GL_TRIANGLES, 0, frameVertices.size() / 8);
+			glBindVertexArray(blackboardVAO);
+			glDrawArrays(GL_TRIANGLES, 0, blackboardVertices.size() / 8);
 		}
 
 		// 绘制风车
 		if (drawWindmill)
 		{
-			lightingShader.use();
-			lightingShader.setVec3("objectColor", 1.0f, 1.0f, 1.0f); // 白色
-			lightingShader.setMat4("projection", projection);
-			lightingShader.setMat4("view", view);
+			windmillShader.use();
+			windmillShader.setVec3("objectColor", 1.0f, 1.0f, 1.0f); // 白色
+			windmillShader.setMat4("projection", projection);
+			windmillShader.setMat4("view", view);
+			windmillShader.setVec3("lightColor", light_color.x, light_color.y, light_color.z);
+			windmillShader.setVec3("lightPos", lightPos);
+			windmillShader.setVec3("viewPos", camera.Position);
 
 			glm::mat4 model = glm::mat4(1.0f);
-			model = glm::translate(model, glm::vec3(chalkboardPosition.x, chalkboardPosition.y, chalkboardPosition.z + 0.01f));
+			model = glm::translate(model, glm::vec3(blackboardPosition.x, blackboardPosition.y, blackboardPosition.z + 0.01f));
 
 			if (ifRotate) {
 				currentAngle += 50.0f * deltaTime * rotateSpeed; // Update the angle only if rotating
 			}
 			model = glm::rotate(model, glm::radians(currentAngle), glm::vec3(0.0f, 0.0f, 1.0f));
 
-			lightingShader.setMat4("model", model);
+			windmillShader.setMat4("model", model);
 
 			glBindVertexArray(windmillVAO);
 			glLineWidth(2.5f);
 			if (drawColor) {
-				lightingShader.setVec3("objectColor", windmill_color.x, windmill_color.y, windmill_color.z);
+				windmillShader.setVec3("objectColor", windmill_color.x, windmill_color.y, windmill_color.z);
 				glDrawArrays(GL_TRIANGLES, 0, windmillVertices.size() / 3);
-				lightingShader.setVec3("objectColor", 1.0f, 1.0f, 1.0f); // 白色
+				windmillShader.setVec3("objectColor", 1.0f, 1.0f, 1.0f); // 白色
 				glDrawArrays(GL_LINE_LOOP, 0, windmillVertices.size() / 3);
 			}
 			else
@@ -777,54 +1050,172 @@ int main()
 			}
 		}
 
-		// 绘制雪花
-		if (drawSnow)
+		// 渲染桌子模型
 		{
-			snowflakeShader.use();
-			snowflakeShader.setMat4("projection", projection);
-			snowflakeShader.setMat4("view", view);
-			// 更新 VBO 中的雪花数据
-			glBindBuffer(GL_ARRAY_BUFFER, flakeVBO);
-			glBufferSubData(GL_ARRAY_BUFFER, 0, snowflakes.size() * sizeof(Snowflake), snowflakes.data());
-			// 绘制每个雪花
-			glBindVertexArray(flakeVAO);
-			for (auto& snowflake : snowflakes) {
-				glm::mat4 model = glm::mat4(1.0f);
-				model = glm::translate(model, glm::vec3(snowflake.x, snowflake.y, snowflake.z));
-				model = glm::scale(model, glm::vec3(snowflake.size));
-				snowflakeShader.setMat4("model", model);
-			}
-			// 使用 GL_POINTS 一次性渲染所有雪花
-			snowflakeShader.setVec4("objectColor", 0.0f, 0.0f, 0.0f, 1.0f);
-			snowflakeShader.setFloat("pointSize", 5.0f);
-			glDrawArrays(GL_POINTS, 0, snowflakes.size());
-			snowflakeShader.setVec4("objectColor", 0.98f, 0.58f, 0.098f, 1.0f);
-			snowflakeShader.setFloat("pointSize", 15.0f);
-			glDrawArrays(GL_POINTS, 0, snowflakes.size());
-			snowflakeShader.setVec4("objectColor", 0.969f, 0.89f, 0.455f, 0.5f);
-			snowflakeShader.setFloat("pointSize", 30.0f);
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			glDrawArrays(GL_POINTS, 0, snowflakes.size());
-			glDisable(GL_BLEND);
+			table_modelShader.use();
+			table_modelShader.setVec3("viewPos", camera.Position);
+
+			// view/projection transformations
+			glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+			glm::mat4 view = camera.GetViewMatrix();
+			table_modelShader.setMat4("projection", projection);
+			table_modelShader.setMat4("view", view);
+
+			// render the loaded model
+			glm::mat4 model = glm::mat4(1.0f);
+			model = glm::translate(model, tablePosition);
+			model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));	// it's a bit too big for our scene, so scale it down
+			model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+			table_modelShader.setMat4("model", model);
+
+			//
+			// directional light
+			table_modelShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
+			table_modelShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.05f);
+			table_modelShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.4f);
+			table_modelShader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.5f);
+			// point light 1
+			table_modelShader.setVec3("pointLights[0].position", lightPos);
+			table_modelShader.setVec3("pointLights[0].ambient", 0.05f, 0.05f, 0.05f);
+			table_modelShader.setVec3("pointLights[0].diffuse", 0.8f, 0.8f, 0.8f);
+			table_modelShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
+			table_modelShader.setFloat("pointLights[0].constant", 1.0f);
+			table_modelShader.setFloat("pointLights[0].linear", 0.09f);
+			table_modelShader.setFloat("pointLights[0].quadratic", 0.032f);
+			// spotLight
+			table_modelShader.setVec3("spotLight.position", camera.Position);
+			table_modelShader.setVec3("spotLight.direction", camera.Front);
+			table_modelShader.setVec3("spotLight.ambient", 0.0f, 0.0f, 0.0f);
+			table_modelShader.setVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
+			table_modelShader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
+			table_modelShader.setFloat("spotLight.constant", 1.0f);
+			table_modelShader.setFloat("spotLight.linear", 0.09f);
+			table_modelShader.setFloat("spotLight.quadratic", 0.032f);
+			table_modelShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
+			table_modelShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
+
+			tableModel.Draw(table_modelShader);
 		}
 
-		// Render the ball
-		if (drawBall)
+		float factor = 15.0f * (float)glfwGetTime();
+		// 渲染圣诞树模型
 		{
-			ballShader.use();
-			ballShader.setMat4("projection", projection);
-			ballShader.setMat4("view", view);
-			// 计算模型矩阵
+			christmas_tree_modelShader.use();
+
+			christmas_tree_modelShader.setVec3("lightAmbient", 0.5f * glm::vec3(1.0f, 1.0f, 1.0f));
+			christmas_tree_modelShader.setVec3("lightDiffuse", 0.2f * glm::vec3(1.0f, 1.0f, 1.0f));
+			christmas_tree_modelShader.setVec3("lightSpecular", glm::vec3(1.0f, 1.0f, 1.0f));
+			christmas_tree_modelShader.setVec3("lightPos", glm::vec3(0.0f, 10.0f, 0.0f));
+			christmas_tree_modelShader.setVec3("viewPos", camera.Position);
+
+			//// view/projection transformations
+			glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+			glm::mat4 view = camera.GetViewMatrix();
+			christmas_tree_modelShader.setMat4("projection", projection);
+			christmas_tree_modelShader.setMat4("view", view);
+
+			//// render the loaded model
 			glm::mat4 model = glm::mat4(1.0f);
-			model = glm::translate(model, ball.position); // 移动到小球的位置
-			model = glm::scale(model, glm::vec3(ball.radius)); // 缩放到小球的半径
-			ballShader.setMat4("model", model);
-			ballShader.setVec3("objectColor", glm::vec3(ball_color.x, ball_color.y, ball_color.z)); // 设置小球的颜色为红色
-			// 绑定球体的 VAO 并绘制
-			glBindVertexArray(ballVAO);
-			glDrawArrays(GL_TRIANGLE_STRIP, 0, 36 * 18); // 绘制球体的顶点（根据栈和扇区数量）
+			model = glm::translate(model, christmas_treePosition);
+			model = glm::rotate(model, glm::radians(factor), glm::vec3(0.0f, 1.0f, 0.0f));
+			model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));	// it's a bit too big for our scene, so scale it down
+			christmas_tree_modelShader.setMat4("model", model);
+
+			christmas_treeModel.Draw(christmas_tree_modelShader);
+		}
+
+		// 绘制天空盒
+		{
+			glDepthFunc(GL_LEQUAL);  // 这里需要将深度函数设置为GL_LEQUAL，因为深度值等于远平面的深度值的片段才会在深度缓冲中通过
+			skyboxShader.use();
+			view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
+			skyboxShader.setMat4("view", view);
+			skyboxShader.setMat4("projection", projection);
+			// skybox cube
+			glBindVertexArray(skyboxVAO);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+			glDrawArrays(GL_TRIANGLES, 0, 36);
 			glBindVertexArray(0);
+			glDepthFunc(GL_LESS); // set depth function back to default
+		}
+
+		// 绘制地型
+		{
+			// 激活着色器并设置 uniform
+			heightMapShader.use();
+			heightMapShader.setFloat("gMinHeight", minHeight);
+			heightMapShader.setFloat("gMaxHeight", maxHeight + cylinderHeight - maxHeight);
+
+			// 视图和投影矩阵
+			glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100000.0f);
+			glm::mat4 view = camera.GetViewMatrix();
+			heightMapShader.setMat4("projection", projection);
+			heightMapShader.setMat4("view", view);
+
+			// 模型矩阵
+			glm::mat4 model = glm::mat4(1.0f);
+			model = glm::translate(model, glm::vec3(christmas_treePosition.x, christmas_treePosition.y - 0.02f, christmas_treePosition.z));
+			model = glm::rotate(model, glm::radians(factor), glm::vec3(0.0f, 1.0f, 0.0f));
+			model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));
+			heightMapShader.setMat4("model", model);
+
+			// 绑定纹理
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, gTextureHeight0);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, gTextureHeight1);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, gTextureHeight2);
+			glActiveTexture(GL_TEXTURE3);
+			glBindTexture(GL_TEXTURE_2D, gTextureHeight3);
+
+			// 绘制地形
+			glBindVertexArray(terrainVAO);
+			glDrawElements(GL_TRIANGLES, cylinder_indices.size(), GL_UNSIGNED_INT, 0);
+		}
+
+		// 渲染Koch雪花
+		if (drawSnowflake)
+		{
+			snowflakeShader.use();
+			glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+			glm::mat4 view = camera.GetViewMatrix();
+			snowflakeShader.setMat4("projection", projection);
+			snowflakeShader.setMat4("view", view);
+			glm::mat4 model = glm::mat4(1.0f);
+			snowflakeShader.setMat4("model", model);
+			snowflakeSystem.update(deltaTime);
+			snowflakeSystem.render(snowflakeShader);
+		}
+
+		if (isChristmasTreeLighted)
+		{
+			lightStripShader.use();
+			glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+			glm::mat4 view = camera.GetViewMatrix();
+			lightStripShader.setMat4("projection", projection);
+			lightStripShader.setMat4("view", view);
+			glm::mat4 model = glm::mat4(1.0f);
+			model = glm::translate(model, glm::vec3(christmas_treePosition.x, christmas_treePosition.y - 0.13f, christmas_treePosition.z - 2.1f));
+			lightStripShader.setMat4("model", model);
+			lightStripShader.setFloat("factor", factor);
+			glBindVertexArray(lightStripVAO);
+			glLineWidth(3.0f);
+			glDrawArrays(GL_LINE_STRIP, 0, lightStripVertices.size() / 3);
+		}
+
+		if (isChristmasTreeLighted)
+		{
+			photonShader.use();
+			glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+			glm::mat4 view = camera.GetViewMatrix();
+			photonShader.setMat4("projection", projection);
+			photonShader.setMat4("view", view);
+			glm::mat4 model = glm::mat4(1.0f);
+			photonShader.setMat4("model", model);
+			photonSystem.update(deltaTime);
+			photonSystem.render(photonShader);
 		}
 
 		// 渲染 imgui		
@@ -845,23 +1236,20 @@ int main()
 	glDeleteVertexArrays(1, &LWallVAO);
 	glDeleteVertexArrays(1, &FWallVAO);
 	glDeleteVertexArrays(1, &lightCubeVAO);
-	glDeleteVertexArrays(1, &chalkboardVAO);
+	glDeleteVertexArrays(1, &blackboardVAO);
 	glDeleteVertexArrays(1, &windmillVAO);
-	glDeleteVertexArrays(1, &frameVAO);
-	glDeleteVertexArrays(1, &flakeVAO);
+	glDeleteVertexArrays(1, &lightStripVAO);
 	glDeleteBuffers(1, &VBO1);
 	glDeleteBuffers(1, &VBO2);
 	glDeleteBuffers(1, &VBO3);
 	glDeleteBuffers(1, &VBO4);
 	glDeleteBuffers(1, &VBO5);
 	glDeleteBuffers(1, &VBO6);
-	glDeleteBuffers(1, &chalkboardVBO);
+	glDeleteBuffers(1, &blackboardVBO);
 	glDeleteBuffers(1, &windmillVBO);
-	glDeleteBuffers(1, &frameVBO);
-	glDeleteBuffers(1, &flakeVBO);
-	glDeleteTextures(1, &frameTexture);
-	glDeleteTextures(1, &chalkboardTexture);
-
+	glDeleteBuffers(1, &lightStripVBO);
+	glDeleteTextures(1, &diffuseMap);
+	glDeleteTextures(1, &specularMap);
 
 	// glfw：终止，清除所有以前分配的 GLFW 资源。
 	// ------------------------------------------------------------------
@@ -869,15 +1257,193 @@ int main()
 	return 0;
 }
 
-//生成黑板的顶点信息
-void generateChalkboardVertices()
+//查询 GLFW 是否按下/释放了该帧的相关键并做出相应的反应
+// ---------------------------------------------------------------------------------------------------------
+void processInput(GLFWwindow* window)
 {
-	float width = chalkboardSize.x;
-	float height = chalkboardSize.y;
-	float depth = chalkboardSize.z;
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, true);
+
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+	{
+		lockCursor = !lockCursor;
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+		camera.ProcessKeyboard(FORWARD, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+		camera.ProcessKeyboard(BACKWARD, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+		camera.ProcessKeyboard(LEFT, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+		camera.ProcessKeyboard(RIGHT, deltaTime);
+
+	if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
+	{
+		drawWindmill = !drawWindmill;
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+	{
+		ifRotate = !ifRotate;
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS)
+	{
+		if (!drawColor) {
+			drawColor = true;
+		}
+		else
+		{
+			// Generate random color
+			windmill_color.x = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+			windmill_color.y = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+			windmill_color.z = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+		}
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+	{
+		drawSnowflake = !drawSnowflake;
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
+	{
+		isChristmasTreeLighted = !isChristmasTreeLighted;
+	}
+}
+
+// glfw：每当窗口大小发生变化（通过操作系统或用户调整大小）时，此回调函数都会执行
+// ---------------------------------------------------------------------------------------------
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+	// 确保视区与新的窗口尺寸匹配;请注意，width和height将明显大于 Retina 显示屏上指定的高度
+	glViewport(0, 0, width, height);
+}
+
+
+// glfw: 每当鼠标移动时，该回调都会被调用
+// -------------------------------------------------------
+void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
+{
+	float xpos = static_cast<float>(xposIn);
+	float ypos = static_cast<float>(yposIn);
+	if (firstMouse)
+	{
+		lastX = xpos;
+		lastY = ypos;
+		firstMouse = false;
+	}
+
+	float xoffset = xpos - lastX;
+	float yoffset = lastY - ypos; // 反转，因为 y 坐标从下到上
+
+	lastX = xpos;
+	lastY = ypos;
+
+	if (!lockCursor)
+	{
+		camera.ProcessMouseMovement(xoffset, yoffset);
+	}
+}
+
+// glfw:每当鼠标滚轮滚动时，该回调都会被调用
+// ----------------------------------------------------------------------
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	if (!lockCursor)
+	{
+		camera.ProcessMouseScroll(static_cast<float>(yoffset));
+	}
+}
+
+// utility function for loading a 2D texture from file
+// ---------------------------------------------------
+unsigned int loadTexture(char const* path)
+{
+	unsigned int textureID;
+	glGenTextures(1, &textureID);
+
+	int width, height, nrComponents;
+	unsigned char* data = stbi_load(path, &width, &height, &nrComponents, 0);
+	if (data)
+	{
+		GLenum format;
+		if (nrComponents == 1)
+			format = GL_RED;
+		else if (nrComponents == 3)
+			format = GL_RGB;
+		else if (nrComponents == 4)
+			format = GL_RGBA;
+
+		glBindTexture(GL_TEXTURE_2D, textureID);
+		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		stbi_image_free(data);
+	}
+	else
+	{
+		std::cout << "Texture failed to load at path: " << path << std::endl;
+		stbi_image_free(data);
+	}
+
+	return textureID;
+}
+
+// loads a cubemap texture from 6 individual texture faces
+// order:
+// +X (right)
+// -X (left)
+// +Y (top)
+// -Y (bottom)
+// +Z (front) 
+// -Z (back)
+// -------------------------------------------------------
+unsigned int loadCubemap(vector<std::string> faces) // 加载立方体贴图函数
+{
+	unsigned int textureID; // 纹理ID
+	glGenTextures(1, &textureID); // 生成纹理
+	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID); // 绑定纹理
+
+	int width, height, nrChannels; // 图片宽度、高度、颜色通道数
+	for (unsigned int i = 0; i < faces.size(); i++)
+	{
+		unsigned char* data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0); // 加载图片
+		if (data)
+		{
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data); // 生成纹理
+			stbi_image_free(data);
+		}
+		else
+		{
+			std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
+			stbi_image_free(data);
+		}
+	}
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // 设置纹理过滤方式
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // 设置纹理过滤方式
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // 设置纹理环绕方式
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // 设置纹理环绕方式
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE); // 设置纹理环绕方式
+
+	return textureID; // 返回纹理ID
+}
+
+//生成黑板的顶点信息
+void generateblackboardVertices()
+{
+	float width = blackboardSize.x;
+	float height = blackboardSize.y;
+	float depth = blackboardSize.z;
 
 	// Front face with texture coordinates
-	chalkboardVertices = {
+	blackboardVertices = {
 		// Positions          // Normals         // Texture Coords
 		// Front face
 		-width / 2, -height / 2,  depth / 2,  0.0f,  0.0f,  1.0f,  0.0f, 0.0f,
@@ -929,224 +1495,37 @@ void generateChalkboardVertices()
 	};
 }
 
-//查询 GLFW 是否按下/释放了该帧的相关键并做出相应的反应
-// ---------------------------------------------------------------------------------------------------------
-void processInput(GLFWwindow* window)
-{
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
-
-	if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
-	{
-		lockCursor = !lockCursor;
-	}
-
-	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-		camera.ProcessKeyboard(FORWARD, deltaTime);
-	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-		camera.ProcessKeyboard(BACKWARD, deltaTime);
-	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-		camera.ProcessKeyboard(LEFT, deltaTime);
-	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-		camera.ProcessKeyboard(RIGHT, deltaTime);
-
-	if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
-	{
-		drawWindmill = !drawWindmill;
-	}
-
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-	{
-		ifRotate = !ifRotate;
-	}
-
-	if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS)
-	{
-		if (!drawColor) {
-			drawColor = true;
-		}
-		else
-		{
-			// Generate random color
-			windmill_color.x = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-			windmill_color.y = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-			windmill_color.z = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-		}
-	}
-}
-
-//生成边框信息
-void generateFrameVertices()
-{
-	float width = frameSize.x;
-	float height = frameSize.y;
-	float depth = frameSize.z;
-	float thickness = frameThickness.x;
-
-	// 边框的前面，包含纹理坐标
-	frameVertices = {
-		// 上边框
-		-width / 2, height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f,
-		 width / 2, height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
-		 width / 2, height / 2 - thickness, depth / 2, 0.0f, 0.0f, 1.0f, 1.0f, 0.9f,
-		 width / 2, height / 2 - thickness, depth / 2, 0.0f, 0.0f, 1.0f, 1.0f, 0.9f,
-		-width / 2, height / 2 - thickness, depth / 2, 0.0f, 0.0f, 1.0f, 0.0f, 0.9f,
-		-width / 2, height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f,
-
-		// 下边框
-		-width / 2, -height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-		 width / 2, -height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f,
-		 width / 2, -height / 2 + thickness, depth / 2, 0.0f, 0.0f, 1.0f, 1.0f, 0.1f,
-		 width / 2, -height / 2 + thickness, depth / 2, 0.0f, 0.0f, 1.0f, 1.0f, 0.1f,
-		-width / 2, -height / 2 + thickness, depth / 2, 0.0f, 0.0f, 1.0f, 0.0f, 0.1f,
-		-width / 2, -height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-
-		// 左边框
-		-width / 2, height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f,
-		-width / 2 + thickness, height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 0.1f, 1.0f,
-		-width / 2 + thickness, -height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 0.1f, 0.0f,
-		-width / 2 + thickness, -height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 0.1f, 0.0f,
-		-width / 2, -height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-		-width / 2, height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f,
-
-		// 右边框
-		 width / 2, height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
-		 width / 2 - thickness, height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 0.9f, 1.0f,
-		 width / 2 - thickness, -height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 0.9f, 0.0f,
-		 width / 2 - thickness, -height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 0.9f, 0.0f,
-		 width / 2, -height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f,
-		 width / 2, height / 2, depth / 2, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
-	};
-}
-
-// glfw：每当窗口大小发生变化（通过操作系统或用户调整大小）时，此回调函数都会执行
-// ---------------------------------------------------------------------------------------------
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-	// 确保视区与新的窗口尺寸匹配;请注意，width和height将明显大于 Retina 显示屏上指定的高度
-	glViewport(0, 0, width, height);
-}
-
-
-// glfw: 每当鼠标移动时，该回调都会被调用
-// -------------------------------------------------------
-void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
-{
-	float xpos = static_cast<float>(xposIn);
-	float ypos = static_cast<float>(yposIn);
-	if (firstMouse)
-	{
-		lastX = xpos;
-		lastY = ypos;
-		firstMouse = false;
-	}
-
-	float xoffset = xpos - lastX;
-	float yoffset = lastY - ypos; // 反转，因为 y 坐标从下到上
-
-	lastX = xpos;
-	lastY = ypos;
-
-	if (!lockCursor)
-	{
-		camera.ProcessMouseMovement(xoffset, yoffset);
-	}
-}
-
-// glfw:每当鼠标滚轮滚动时，该回调都会被调用
-// ----------------------------------------------------------------------
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-	if (!lockCursor)
-	{
-		camera.ProcessMouseScroll(static_cast<float>(yoffset));
-	}
-}
-
-// 创建雪花粒子系统
-void generateSnowflakes(int count) {
-	srand(static_cast<unsigned>(time(0))); // 随机数种子
-	for (int i = 0; i < count; ++i) {
-		Snowflake flake;
-		flake.x = cubePos.x + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f; // x 范围在 cube 内 [-0.5, 0.5]
-		flake.y = cubePos.y + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 1.5f; // y 范围在 cube 内 [-0.5, 0.5]
-		flake.z = static_cast<float>(rand()) / static_cast<float>(RAND_MAX); // z 范围在 cube 内 [-0.5, 0.5]
-		flake.size = static_cast<float>(rand() % 5 + 1); // size 范围 1 到 5
-		flake.speed = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 0.1f; // 随机的雪花下落速度
-		snowflakes.push_back(flake);
-	}
-}
-
-// 渲染和更新雪花位置
-void updateSnowflakes() {
-	srand(static_cast<unsigned>(time(0)));
-	for (auto& snowflake : snowflakes) {
-		if (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) >= 0.5f) {
-			snowflake.y -= snowflake.speed * deltaTime; // 雪花下落
-		}
-		else {
-			snowflake.y += snowflake.speed * deltaTime; // 雪花下落
-		}
-		if (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) >= 0.5f) {
-			snowflake.x += snowflake.speed * deltaTime * 0.5f;
-		}
-		else {
-			snowflake.x -= snowflake.speed * deltaTime * 0.5f;
-		}
-		// 当雪花超出立方体底部时，重置到立方体顶部
-		if (snowflake.y < cubePos.y - 0.5f) { // 超出立方体底部
-			snowflake.y += 0.5f; // 重置到立方体顶部
-			snowflake.x = cubePos.x + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f; // 随机 x 位置
-		}
-	}
-}
-
-// 更新小球位置
-void updateBallPosition() {
-	ball.position += ball.velocity * deltaTime;
-	if (ball.position.x - ball.radius <= -1.2f) {
-		ball.velocity.x = fabs(ball.velocity.x); // Reverse X direction
-	}
-	if (ball.position.x + ball.radius >= 1.2f) {
-		ball.velocity.x = -fabs(ball.velocity.x); // Reverse X direction
-	}
-	if (ball.position.y - ball.radius <= -0.4f) {
-		ball.velocity.y = fabs(ball.velocity.y); // Reverse Y direction
-	}
-	if (ball.position.y + ball.radius >= 1.0f) {
-		ball.velocity.y = -fabs(ball.velocity.y); // Reverse Y direction
-	}
-	if (ball.position.z + ball.radius >= 2.7f) {
-		ball.velocity.z = -fabs(ball.velocity.z); // Reverse Z direction
-	}
-	if (ball.position.z - ball.radius <= 1.3f) {
-		ball.velocity.z = fabs(ball.velocity.z); // Reverse Z direction
-	}
-}
-
-std::vector<float> generateSphereVertices(float radius, int sectorCount, int stackCount) {
+std::vector<float> generateLightStripVertices(glm::vec3 coneApex, glm::vec3 coneBase, float baseRadius, int numTurns, int pointsPerTurn) {
 	std::vector<float> vertices;
-	float x, y, z, xy; // Position
-	float sectorStep = 2 * acos(-1.0) / sectorCount;
-	float stackStep = acos(-1.0) / stackCount;
-	float sectorAngle, stackAngle;
+	float height = glm::distance(coneApex, coneBase); // 圆锥高度
+	glm::vec3 coneAxis = glm::normalize(coneApex - coneBase); // 圆锥轴方向向量，从基底指向顶点
 
-	for (int i = 0; i <= stackCount; ++i) {
-		stackAngle = acos(-1.0) / 2 - i * stackStep; // Starting from pi/2 to -pi/2
-		xy = radius * cosf(stackAngle);        // r * cos(u)
-		y = radius * sinf(stackAngle);         // r * sin(u)
+	// 创建一个任意不平行于 coneAxis 的向量
+	glm::vec3 arbitraryVec = glm::vec3(0.0f, 1.0f, 0.0f);
+	if (glm::abs(glm::dot(coneAxis, arbitraryVec)) > 0.99f) {
+		arbitraryVec = glm::vec3(1.0f, 0.0f, 0.0f);
+	}
 
-		// Add (sectorCount+1) vertices per stack
-		for (int j = 0; j <= sectorCount; ++j) {
-			sectorAngle = j * sectorStep;
+	// 计算垂直于 coneAxis 的两个正交单位向量 u 和 v
+	glm::vec3 u = glm::normalize(glm::cross(coneAxis, arbitraryVec));
+	glm::vec3 v = glm::cross(coneAxis, u);
 
-			// Vertex position
-			x = xy * cosf(sectorAngle); // r * cos(u) * cos(v)
-			z = xy * sinf(sectorAngle); // r * cos(u) * sin(v)
-			vertices.push_back(x);
-			vertices.push_back(y);
-			vertices.push_back(z);
-		}
+	int totalPoints = numTurns * pointsPerTurn;
+	for (int i = 0; i < totalPoints; ++i) {
+		// 当前角度
+		float theta = 2.0f * glm::pi<float>() * i / pointsPerTurn;
+		// 当前高度
+		float h = height * i / totalPoints;
+		// 当前半径
+		float radius = (1.0f - h / height) * baseRadius;
+		// 当前点的圆形偏移，在垂直于 coneAxis 的平面内
+		glm::vec3 circularOffset = radius * (glm::cos(theta) * u + glm::sin(theta) * v);
+		// 计算顶点位置
+		glm::vec3 position = coneBase + h * coneAxis + circularOffset;
+		// 将顶点位置添加到缓冲数据中
+		vertices.push_back(position.x);
+		vertices.push_back(position.y);
+		vertices.push_back(position.z);
 	}
 	return vertices;
 }
