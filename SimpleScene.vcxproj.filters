@@ -51,6 +51,12 @@
     <ClInclude Include="stb_image.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="mesh.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="model.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="lightcube_fragment.glsl">
@@ -65,24 +71,8 @@
     <None Include="lighting_vertex.glsl">
       <Filter>源文件</Filter>
     </None>
-    <None Include="board_vertex.glsl">
-      <Filter>源文件</Filter>
-    </None>
-    <None Include="board_fragment.glsl">
-      <Filter>源文件</Filter>
-    </None>
-    <None Include="snowflake_vertex.glsl">
-      <Filter>源文件</Filter>
-    </None>
-    <None Include="snowflake_fragment.glsl">
-      <Filter>源文件</Filter>
-    </None>
-    <None Include="ball_vertex.glsl">
-      <Filter>源文件</Filter>
-    </None>
-    <None Include="ball_fragment.glsl">
-      <Filter>源文件</Filter>
-    </None>
+    <None Include="skybox_vertex.glsl" />
+    <None Include="skybox_fragment.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -112,13 +102,5 @@
     <ClCompile Include="imgui_widgets.cpp">
       <Filter>头文件</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="frame_texture.jpg">
-      <Filter>资源文件</Filter>
-    </Image>
-    <Image Include="board_texture.jpg">
-      <Filter>资源文件</Filter>
-    </Image>
   </ItemGroup>
 </Project>
