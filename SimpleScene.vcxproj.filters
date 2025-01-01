@@ -60,6 +60,9 @@
     <ClInclude Include="ltc_matrix.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="curve.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="lightcube_fragment.glsl">
@@ -86,6 +89,10 @@
     <None Include="area_light_vertex.glsl">
       <Filter>源文件</Filter>
     </None>
+    <None Include="curve_point_vertex.glsl" />
+    <None Include="curve_point_fragment.glsl" />
+    <None Include="curve_line_vertex.glsl" />
+    <None Include="curve_line_fragment.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

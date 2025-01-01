@@ -140,6 +140,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
+    <ClInclude Include="curve.hpp" />
     <ClInclude Include="imconfig.h" />
     <ClInclude Include="imgui.h" />
     <ClInclude Include="imgui_impl_glfw.h" />
@@ -158,6 +159,10 @@
   <ItemGroup>
     <None Include="area_light_fragment.glsl" />
     <None Include="area_light_vertex.glsl" />
+    <None Include="curve_line_fragment.glsl" />
+    <None Include="curve_line_vertex.glsl" />
+    <None Include="curve_point_fragment.glsl" />
+    <None Include="curve_point_vertex.glsl" />
     <None Include="lightcube_fragment.glsl" />
     <None Include="lightcube_vertex.glsl" />
     <None Include="lighting_fragment.glsl" />

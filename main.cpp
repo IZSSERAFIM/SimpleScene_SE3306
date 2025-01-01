@@ -17,6 +17,7 @@
 #include "model.h"
 
 #include "ltc_matrix.hpp"
+#include "curve.hpp"
 
 #include <iostream>
 #include <vector>
@@ -62,7 +63,8 @@ const char* glsl_version = "#version 330";
 ImVec4 clear_color = ImVec4(0.1f, 0.1f, 0.1f, 1.0f);
 ImVec4 light_color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 
-struct LTC_matrices {
+struct LTC_matrices
+{
 	unsigned int mat1;
 	unsigned int mat2;
 };
@@ -105,11 +107,12 @@ int main()
 		return -1;
 	}
 
-	//imgui init
-	// Setup Dear ImGui context
+	// imgui init
+	//  Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	ImGuiIO& io = ImGui::GetIO();
+	(void)io;
 	// Setup Dear ImGui style
 	ImGui::StyleColorsDark();
 	// Setup Platform/Renderer backends
@@ -132,55 +135,54 @@ int main()
 	// ------------------------------------------------------------------
 	float vertices[] = {
 		/*
-		* 顶点坐标，					  法向量，              纹理坐标
-		*/
-		// 立方体的后面
-		-1.0f, -0.5f, -0.5f,  0.0f,  0.0f,  1.0f,  0.0f, 0.0f,
-		 1.0f, -0.5f, -0.5f,  0.0f,  0.0f,  1.0f,  1.0f, 0.0f,
-		 1.0f,  0.5f, -0.5f,  0.0f,  0.0f,  1.0f,  1.0f, 1.0f,
-		 1.0f,  0.5f, -0.5f,  0.0f,  0.0f,  1.0f,  1.0f, 1.0f,
-		-1.0f,  0.5f, -0.5f,  0.0f,  0.0f,  1.0f,  0.0f, 1.0f,
-		-1.0f, -0.5f, -0.5f,  0.0f,  0.0f,  1.0f,  0.0f, 0.0f,
-		// 立方体的正面
-		-1.0f, -0.5f,  0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
-		 1.0f, -0.5f,  0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 0.0f,
-		 1.0f,  0.5f,  0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
-		 1.0f,  0.5f,  0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
-		-1.0f,  0.5f,  0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 1.0f,
-		-1.0f, -0.5f,  0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
-		// 立方体的左面
-		-1.0f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-		-1.0f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
-		-1.0f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-		-1.0f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-		-1.0f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
-		-1.0f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-		// 立方体的右面
-		 1.0f,  0.5f,  0.5f,  -1.0f, 0.0f,  0.0f,  1.0f, 0.0f,
-		 1.0f,  0.5f, -0.5f,  -1.0f, 0.0f,  0.0f,  1.0f, 1.0f,
-		 1.0f, -0.5f, -0.5f,  -1.0f, 0.0f,  0.0f,  0.0f, 1.0f,
-		 1.0f, -0.5f, -0.5f,  -1.0f, 0.0f,  0.0f,  0.0f, 1.0f,
-		 1.0f, -0.5f,  0.5f,  -1.0f, 0.0f,  0.0f,  0.0f, 0.0f,
-		 1.0f,  0.5f,  0.5f,  -1.0f, 0.0f,  0.0f,  1.0f, 0.0f,
+		 * 顶点坐标，					  法向量，              纹理坐标
+		 */
+		 // 立方体的后面
+		 -1.0f, -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+		 1.0f, -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f,
+		 1.0f, 0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
+		 1.0f, 0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
+		 -1.0f, 0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f,
+		 -1.0f, -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+		 // 立方体的正面
+		 -1.0f, -0.5f, 0.5f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
+		 1.0f, -0.5f, 0.5f, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f,
+		 1.0f, 0.5f, 0.5f, 0.0f, 0.0f, -1.0f, 1.0f, 1.0f,
+		 1.0f, 0.5f, 0.5f, 0.0f, 0.0f, -1.0f, 1.0f, 1.0f,
+		 -1.0f, 0.5f, 0.5f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f,
+		 -1.0f, -0.5f, 0.5f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
+		 // 立方体的左面
+		 -1.0f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+		 -1.0f, 0.5f, -0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+		 -1.0f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+		 -1.0f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+		 -1.0f, -0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+		 -1.0f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+		 // 立方体的右面
+		 1.0f, 0.5f, 0.5f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+		 1.0f, 0.5f, -0.5f, -1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+		 1.0f, -0.5f, -0.5f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+		 1.0f, -0.5f, -0.5f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+		 1.0f, -0.5f, 0.5f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+		 1.0f, 0.5f, 0.5f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
 		 // 立方体的底面
-		-1.0f, -0.5f,  0.5f,   0.0f, 1.0f, 0.0f,  0.0f, 0.0f,
-		-1.0f, -0.5f, -0.5f,   0.0f, 1.0f, 0.0f,  0.0f, 1.0f,
-		 1.0f, -0.5f, -0.5f,   0.0f, 1.0f, 0.0f,  1.0f, 1.0f,
-		-1.0f, -0.5f,  0.5f,   0.0f, 1.0f, 0.0f,  0.0f, 0.0f,
-		 1.0f, -0.5f, -0.5f,   0.0f, 1.0f, 0.0f,  1.0f, 1.0f,
-		 1.0f, -0.5f,  0.5f,   0.0f, 1.0f, 0.0f,  1.0f, 0.0f,
+		 -1.0f, -0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+		 -1.0f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
+		 1.0f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+		 -1.0f, -0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+		 1.0f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+		 1.0f, -0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
 
 		 // 立方体的顶面
-		 -1.0f,  0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
-		  1.0f,  0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 1.0f,
-		  1.0f,  0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
-		  1.0f,  0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
-		 -1.0f,  0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 0.0f,
-		 -1.0f,  0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f
-	};
+		 -1.0f, 0.5f, -0.5f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f,
+		 1.0f, 0.5f, -0.5f, 0.0f, -1.0f, 0.0f, 1.0f, 1.0f,
+		 1.0f, 0.5f, 0.5f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+		 1.0f, 0.5f, 0.5f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+		 -1.0f, 0.5f, 0.5f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+		 -1.0f, 0.5f, -0.5f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f };
 
-	//获取各个平面的数据
-	// ------------------------------------------------------------------
+	// 获取各个平面的数据
+	//  ------------------------------------------------------------------
 	float FWallVertices[48];
 	std::copy(vertices + 0, vertices + 48, FWallVertices);
 	float LWallVertices[48];
@@ -215,8 +217,8 @@ int main()
 		glEnableVertexAttribArray(2);
 	}
 
-	//载入地板的顶点信息
-	// ------------------------------------------------------------------
+	// 载入地板的顶点信息
+	//  ------------------------------------------------------------------
 	unsigned int VBO2, FloorVAO;
 	{
 		glGenVertexArrays(1, &FloorVAO);
@@ -238,8 +240,8 @@ int main()
 		glEnableVertexAttribArray(2);
 	}
 
-	//载入左墙的顶点信息
-	// ------------------------------------------------------------------
+	// 载入左墙的顶点信息
+	//  ------------------------------------------------------------------
 	unsigned int VBO3, LWallVAO;
 	{
 		glGenVertexArrays(1, &LWallVAO);
@@ -261,8 +263,8 @@ int main()
 		glEnableVertexAttribArray(2);
 	}
 
-	//载入右墙的顶点信息
-	// ------------------------------------------------------------------
+	// 载入右墙的顶点信息
+	//  ------------------------------------------------------------------
 	unsigned int VBO4, RWallVAO;
 	{
 		glGenVertexArrays(1, &RWallVAO);
@@ -284,8 +286,8 @@ int main()
 		glEnableVertexAttribArray(2);
 	}
 
-	//载入前墙的顶点信息
-	// ------------------------------------------------------------------
+	// 载入前墙的顶点信息
+	//  ------------------------------------------------------------------
 	unsigned int VBO5, FWallVAO;
 	{
 		glGenVertexArrays(1, &FWallVAO);
@@ -325,13 +327,12 @@ int main()
 
 	// 区域光源
 	float areaLightVertices[] = {
-		-1.0f * 0.1f,  0.5f * 0.1f,  0.5f * 0.1f,  0.0f,  1.0f,  0.0f,  0.0f, 0.0f,
-		-1.0f * 0.1f,  0.5f * 0.1f, -0.5f * 0.1f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f,
-		 1.0f * 0.1f,  0.5f * 0.1f, -0.5f * 0.1f,  0.0f,  1.0f,  0.0f,  1.0f, 1.0f,
-		-1.0f * 0.1f,  0.5f * 0.1f,  0.5f * 0.1f,  0.0f,  1.0f,  0.0f,  0.0f, 0.0f,
-		 1.0f * 0.1f,  0.5f * 0.1f, -0.5f * 0.1f,  0.0f,  1.0f,  0.0f,  1.0f, 1.0f,
-		 1.0f * 0.1f,  0.5f * 0.1f,  0.5f * 0.1f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f
-	};
+		-1.0f * 0.1f, 0.5f * 0.1f, 0.5f * 0.1f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+		-1.0f * 0.1f, 0.5f * 0.1f, -0.5f * 0.1f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
+		1.0f * 0.1f, 0.5f * 0.1f, -0.5f * 0.1f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+		-1.0f * 0.1f, 0.5f * 0.1f, 0.5f * 0.1f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+		1.0f * 0.1f, 0.5f * 0.1f, -0.5f * 0.1f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+		1.0f * 0.1f, 0.5f * 0.1f, 0.5f * 0.1f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f };
 	unsigned int VBO7, areaLightVAO;
 	{
 		glGenVertexArrays(1, &areaLightVAO);
@@ -355,49 +356,48 @@ int main()
 
 	// 设置天空盒
 	float skyboxVertices[] = {
-		// positions          
-		-1.0f,  1.0f, -1.0f,
+		// positions
+		-1.0f, 1.0f, -1.0f,
 		-1.0f, -1.0f, -1.0f,
-		 1.0f, -1.0f, -1.0f,
-		 1.0f, -1.0f, -1.0f,
-		 1.0f,  1.0f, -1.0f,
-		-1.0f,  1.0f, -1.0f,
+		1.0f, -1.0f, -1.0f,
+		1.0f, -1.0f, -1.0f,
+		1.0f, 1.0f, -1.0f,
+		-1.0f, 1.0f, -1.0f,
 
-		-1.0f, -1.0f,  1.0f,
+		-1.0f, -1.0f, 1.0f,
 		-1.0f, -1.0f, -1.0f,
-		-1.0f,  1.0f, -1.0f,
-		-1.0f,  1.0f, -1.0f,
-		-1.0f,  1.0f,  1.0f,
-		-1.0f, -1.0f,  1.0f,
+		-1.0f, 1.0f, -1.0f,
+		-1.0f, 1.0f, -1.0f,
+		-1.0f, 1.0f, 1.0f,
+		-1.0f, -1.0f, 1.0f,
 
-		 1.0f, -1.0f, -1.0f,
-		 1.0f, -1.0f,  1.0f,
-		 1.0f,  1.0f,  1.0f,
-		 1.0f,  1.0f,  1.0f,
-		 1.0f,  1.0f, -1.0f,
-		 1.0f, -1.0f, -1.0f,
+		1.0f, -1.0f, -1.0f,
+		1.0f, -1.0f, 1.0f,
+		1.0f, 1.0f, 1.0f,
+		1.0f, 1.0f, 1.0f,
+		1.0f, 1.0f, -1.0f,
+		1.0f, -1.0f, -1.0f,
 
-		-1.0f, -1.0f,  1.0f,
-		-1.0f,  1.0f,  1.0f,
-		 1.0f,  1.0f,  1.0f,
-		 1.0f,  1.0f,  1.0f,
-		 1.0f, -1.0f,  1.0f,
-		-1.0f, -1.0f,  1.0f,
+		-1.0f, -1.0f, 1.0f,
+		-1.0f, 1.0f, 1.0f,
+		1.0f, 1.0f, 1.0f,
+		1.0f, 1.0f, 1.0f,
+		1.0f, -1.0f, 1.0f,
+		-1.0f, -1.0f, 1.0f,
 
-		-1.0f,  1.0f, -1.0f,
-		 1.0f,  1.0f, -1.0f,
-		 1.0f,  1.0f,  1.0f,
-		 1.0f,  1.0f,  1.0f,
-		-1.0f,  1.0f,  1.0f,
-		-1.0f,  1.0f, -1.0f,
+		-1.0f, 1.0f, -1.0f,
+		1.0f, 1.0f, -1.0f,
+		1.0f, 1.0f, 1.0f,
+		1.0f, 1.0f, 1.0f,
+		-1.0f, 1.0f, 1.0f,
+		-1.0f, 1.0f, -1.0f,
 
 		-1.0f, -1.0f, -1.0f,
-		-1.0f, -1.0f,  1.0f,
-		 1.0f, -1.0f, -1.0f,
-		 1.0f, -1.0f, -1.0f,
-		-1.0f, -1.0f,  1.0f,
-		 1.0f, -1.0f,  1.0f
-	};
+		-1.0f, -1.0f, 1.0f,
+		1.0f, -1.0f, -1.0f,
+		1.0f, -1.0f, -1.0f,
+		-1.0f, -1.0f, 1.0f,
+		1.0f, -1.0f, 1.0f };
 
 	// skybox VAO
 	unsigned int skyboxVAO, skyboxVBO;
@@ -411,15 +411,13 @@ int main()
 
 	// load textures
 	// -------------
-	vector<std::string> faces
-	{
-	"./skybox/px.png",
-	"./skybox/nx.png",
-	"./skybox/py.png",
-	"./skybox/ny.png",
-	"./skybox/pz.png",
-	"./skybox/nz.png"
-	};
+	vector<std::string> faces{
+		"./skybox/px.png",
+		"./skybox/nx.png",
+		"./skybox/py.png",
+		"./skybox/ny.png",
+		"./skybox/pz.png",
+		"./skybox/nz.png" };
 	unsigned int cubemapTexture = loadCubemap(faces);
 	skyboxShader.use();
 	skyboxShader.setInt("skybox", 0);
@@ -432,6 +430,30 @@ int main()
 	mLTC.mat2 = loadLUTTexture();
 
 	areaLightTranslate = lightPos;
+
+	// 贝塞尔曲线
+	int curcontrolpoint = 0;
+	curve* mycurve = new curve();
+	mycurve->num = 3;
+	mycurve->verts = new float[mycurve->num * 3]();
+	for (int i = 0; i < 3; ++i)
+	{
+		mycurve->verts[i * 3] = 0.5 * (i - 1);
+		mycurve->verts[i * 3 + 1] = 0;
+		mycurve->verts[i * 3 + 2] = 2.0f;
+	}
+	unsigned int curve_lineVAO;
+	glGenVertexArrays(1, &curve_lineVAO);
+	unsigned int curve_lineVBO;
+	glGenBuffers(1, &curve_lineVBO);
+	unsigned int curve_pointVAO;
+	glGenVertexArrays(1, &curve_pointVAO);
+	unsigned int curve_pointVBO;
+	glGenBuffers(1, &curve_pointVBO);
+	unsigned int instanceVBO;
+	glGenBuffers(1, &instanceVBO);
+	Shader curve_line_shader("curve_line_vertex.glsl", "curve_line_fragment.glsl");
+	Shader curve_point_shader("curve_point_vertex.glsl", "curve_point_fragment.glsl");
 
 	// 渲染循环
 	// -----------
@@ -451,13 +473,24 @@ int main()
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-		ImGui::Begin("panel");// Create a window called "panel" and append into it.
+		ImGui::Begin("panel"); // Create a window called "panel" and append into it.
+		ImGui::SetWindowPos(ImVec2(0, 0));
+		ImGui::SetWindowSize(ImVec2(500, 170));
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
 		ImGui::Checkbox("Lock Cursor(Shortcut: SPACE)", &lockCursor);
 		ImGui::Checkbox("double sided lighting", &twoSided);
 		ImGui::ColorEdit3("light color", (float*)&light_color);
 		ImGui::SliderFloat("light intensity", &intensity, 0.0f, 200.0f);
 		ImGui::SliderFloat("material roghness", &roughness, 0.0f, 1.0f);
+		ImGui::End();
+
+		ImGui::Begin("dashboard of Bezier Curve");
+		ImGui::SetWindowPos(ImVec2(0, 170));
+		ImGui::SetWindowSize(ImVec2(400, 200));
+		ImGui::InputInt("control point num", &mycurve->num);
+		ImGui::SliderInt("cur control point", &curcontrolpoint, 0, mycurve->num - 1);
+		ImGui::SliderFloat("controlpoint x", (mycurve->verts + 3 * curcontrolpoint), -1.0, 1.0);
+		ImGui::SliderFloat("controlpoint y", (mycurve->verts + 3 * curcontrolpoint + 1), -1.0, 1.0);
 		ImGui::End();
 
 		// 开始渲染
@@ -492,7 +525,7 @@ int main()
 		lightingShader.setVec3("viewPosition", camera.Position);
 		lightingShader.setVec3("areaLightTranslate", areaLightTranslate);
 
-		//绘制天花板
+		// 绘制天花板
 		{
 			// 渲染
 			glActiveTexture(GL_TEXTURE0);
@@ -598,9 +631,37 @@ int main()
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
 
+		// 绘制贝塞尔曲线
+		{
+			mycurve->gencurve();
+			mycurve->update();
+			mycurve->updategl(curve_lineVAO, curve_lineVBO, curve_pointVAO, curve_pointVBO, instanceVBO);
+
+			glm::mat4 model = glm::mat4(1.0f);
+
+			curve_line_shader.use();
+			curve_line_shader.setVec3("color", 1.0, 1.0, 1.0);
+			curve_line_shader.setMat4("projection", projection);
+			curve_line_shader.setMat4("view", view);
+			curve_line_shader.setMat4("model", model);
+
+			glBindVertexArray(curve_lineVAO);
+			glDrawArrays(GL_LINE_STRIP, 0, mycurve->samplenum + 1);
+
+			curve_point_shader.use();
+			curve_point_shader.setVec3("color", 1.0, 0.0, 0.0);
+			curve_point_shader.setFloat("scale", 0.01f);
+			curve_point_shader.setMat4("projection", projection);
+			curve_point_shader.setMat4("view", view);
+			curve_point_shader.setMat4("model", model);
+
+			glBindVertexArray(curve_pointVAO);
+			glDrawArraysInstanced(GL_TRIANGLES, 0, 6, mycurve->num);
+		}
+
 		// 绘制天空盒
 		{
-			glDepthFunc(GL_LEQUAL);  // 这里需要将深度函数设置为GL_LEQUAL，因为深度值等于远平面的深度值的片段才会在深度缓冲中通过
+			glDepthFunc(GL_LEQUAL); // 这里需要将深度函数设置为GL_LEQUAL，因为深度值等于远平面的深度值的片段才会在深度缓冲中通过
 			skyboxShader.use();
 			view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
 			skyboxShader.setMat4("view", view);
@@ -614,7 +675,7 @@ int main()
 			glDepthFunc(GL_LESS); // set depth function back to default
 		}
 
-		// 渲染 imgui		
+		// 渲染 imgui
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -633,6 +694,9 @@ int main()
 	glDeleteVertexArrays(1, &FWallVAO);
 	glDeleteVertexArrays(1, &lightCubeVAO);
 	glDeleteVertexArrays(1, &skyboxVAO);
+	glDeleteVertexArrays(1, &areaLightVAO);
+	glDeleteVertexArrays(1, &curve_lineVAO);
+	glDeleteVertexArrays(1, &curve_pointVAO);
 	glDeleteBuffers(1, &VBO1);
 	glDeleteBuffers(1, &VBO2);
 	glDeleteBuffers(1, &VBO3);
@@ -640,6 +704,10 @@ int main()
 	glDeleteBuffers(1, &VBO5);
 	glDeleteBuffers(1, &VBO6);
 	glDeleteBuffers(1, &skyboxVBO);
+	glDeleteBuffers(1, &VBO7);
+	glDeleteBuffers(1, &curve_lineVBO);
+	glDeleteBuffers(1, &curve_pointVBO);
+	glDeleteBuffers(1, &instanceVBO);
 
 	// glfw：终止，清除所有以前分配的 GLFW 资源。
 	// ------------------------------------------------------------------
@@ -647,8 +715,8 @@ int main()
 	return 0;
 }
 
-//查询 GLFW 是否按下/释放了该帧的相关键并做出相应的反应
-// ---------------------------------------------------------------------------------------------------------
+// 查询 GLFW 是否按下/释放了该帧的相关键并做出相应的反应
+//  ---------------------------------------------------------------------------------------------------------
 void processInput(GLFWwindow* window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -712,7 +780,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	// 确保视区与新的窗口尺寸匹配;请注意，width和height将明显大于 Retina 显示屏上指定的高度
 	glViewport(0, 0, width, height);
 }
-
 
 // glfw: 每当鼠标移动时，该回调都会被调用
 // -------------------------------------------------------
@@ -794,13 +861,13 @@ unsigned int loadTexture(char const* path)
 // -X (left)
 // +Y (top)
 // -Y (bottom)
-// +Z (front) 
+// +Z (front)
 // -Z (back)
 // -------------------------------------------------------
 unsigned int loadCubemap(vector<std::string> faces) // 加载立方体贴图函数
 {
-	unsigned int textureID; // 纹理ID
-	glGenTextures(1, &textureID); // 生成纹理
+	unsigned int textureID;						   // 纹理ID
+	glGenTextures(1, &textureID);				   // 生成纹理
 	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID); // 绑定纹理
 
 	int width, height, nrChannels; // 图片宽度、高度、颜色通道数
@@ -818,8 +885,8 @@ unsigned int loadCubemap(vector<std::string> faces) // 加载立方体贴图函数
 			stbi_image_free(data);
 		}
 	}
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // 设置纹理过滤方式
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // 设置纹理过滤方式
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);	   // 设置纹理过滤方式
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);	   // 设置纹理过滤方式
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // 设置纹理环绕方式
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // 设置纹理环绕方式
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE); // 设置纹理环绕方式
