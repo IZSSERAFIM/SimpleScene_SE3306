@@ -57,6 +57,9 @@
     <ClInclude Include="model.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="ltc_matrix.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="lightcube_fragment.glsl">
@@ -71,8 +74,18 @@
     <None Include="lighting_vertex.glsl">
       <Filter>源文件</Filter>
     </None>
-    <None Include="skybox_vertex.glsl" />
-    <None Include="skybox_fragment.glsl" />
+    <None Include="skybox_fragment.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="skybox_vertex.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="area_light_fragment.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="area_light_vertex.glsl">
+      <Filter>源文件</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

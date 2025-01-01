@@ -16,6 +16,8 @@
 #include "camera.h"
 #include "model.h"
 
+#include "ltc_matrix.hpp"
+
 #include <iostream>
 #include <vector>
 #include <cmath>
@@ -28,6 +30,8 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow* window);
 unsigned int loadTexture(const char* path);
 unsigned int loadCubemap(vector<std::string> faces);
+unsigned int loadMTexture();
+unsigned int loadLUTTexture();
 
 // 窗口设置
 const unsigned int SCR_WIDTH = 1280;
@@ -45,19 +49,23 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 // 光照设置
-glm::vec3 lightPos(0.0f, 0.75f, 1.65f);
+glm::vec3 lightPos(0.0f, 0.745f, 2.0f);
 glm::vec3 cubePos(0.0f, 0.3f, 2.0f);
+glm::vec3 areaLightTranslate;
+static float intensity = 50.0f;
+static glm::vec3 color = glm::vec3(0.184314f, 0.309804f, 0.309804f);
+static float roughness = 0.5f;
+static bool twoSided = true;
 
 // imgui设置
 const char* glsl_version = "#version 330";
 ImVec4 clear_color = ImVec4(0.1f, 0.1f, 0.1f, 1.0f);
 ImVec4 light_color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-ImVec4 celling_color = ImVec4(0.5, 0.5f, 0.5f, 1.0f);
-ImVec4 floor_color = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
-ImVec4 left_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
-ImVec4 front_color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-ImVec4 right_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
-float scale = 2.0f;
+
+struct LTC_matrices {
+	unsigned int mat1;
+	unsigned int mat2;
+};
 
 int main()
 {
@@ -117,67 +125,72 @@ int main()
 	// ------------------------------------
 	Shader lightingShader("lighting_vertex.glsl", "lighting_fragment.glsl");
 	Shader lightCubeShader("lightcube_vertex.glsl", "lightcube_fragment.glsl");
+	Shader areaLightShader("area_light_vertex.glsl", "area_light_fragment.glsl");
 	Shader skyboxShader("skybox_vertex.glsl", "skybox_fragment.glsl");
 
 	// 统一设置用到的坐标信息(每一行前三个数字为点的坐标，后三个为法向量)
 	// ------------------------------------------------------------------
 	float vertices[] = {
+		/*
+		* 顶点坐标，					  法向量，              纹理坐标
+		*/
 		// 立方体的后面
-		-0.5f * scale, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		 0.5f * scale, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		 0.5f * scale,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		 0.5f * scale,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		-0.5f * scale,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		-0.5f * scale, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		-1.0f, -0.5f, -0.5f,  0.0f,  0.0f,  1.0f,  0.0f, 0.0f,
+		 1.0f, -0.5f, -0.5f,  0.0f,  0.0f,  1.0f,  1.0f, 0.0f,
+		 1.0f,  0.5f, -0.5f,  0.0f,  0.0f,  1.0f,  1.0f, 1.0f,
+		 1.0f,  0.5f, -0.5f,  0.0f,  0.0f,  1.0f,  1.0f, 1.0f,
+		-1.0f,  0.5f, -0.5f,  0.0f,  0.0f,  1.0f,  0.0f, 1.0f,
+		-1.0f, -0.5f, -0.5f,  0.0f,  0.0f,  1.0f,  0.0f, 0.0f,
 		// 立方体的正面
-		-0.5f * scale, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		 0.5f * scale, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		 0.5f * scale,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		 0.5f * scale,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		-0.5f * scale,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		-0.5f * scale, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+		-1.0f, -0.5f,  0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
+		 1.0f, -0.5f,  0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 0.0f,
+		 1.0f,  0.5f,  0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
+		 1.0f,  0.5f,  0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
+		-1.0f,  0.5f,  0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 1.0f,
+		-1.0f, -0.5f,  0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
 		// 立方体的左面
-		-0.5f * scale,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f * scale,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f * scale, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f * scale, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f * scale, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f * scale,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+		-1.0f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+		-1.0f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
+		-1.0f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+		-1.0f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+		-1.0f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
+		-1.0f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
 		// 立方体的右面
-		 0.5f * scale,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f * scale,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f * scale, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f * scale, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f * scale, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f * scale,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+		 1.0f,  0.5f,  0.5f,  -1.0f, 0.0f,  0.0f,  1.0f, 0.0f,
+		 1.0f,  0.5f, -0.5f,  -1.0f, 0.0f,  0.0f,  1.0f, 1.0f,
+		 1.0f, -0.5f, -0.5f,  -1.0f, 0.0f,  0.0f,  0.0f, 1.0f,
+		 1.0f, -0.5f, -0.5f,  -1.0f, 0.0f,  0.0f,  0.0f, 1.0f,
+		 1.0f, -0.5f,  0.5f,  -1.0f, 0.0f,  0.0f,  0.0f, 0.0f,
+		 1.0f,  0.5f,  0.5f,  -1.0f, 0.0f,  0.0f,  1.0f, 0.0f,
 		 // 立方体的底面
-		-0.5f * scale, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-		 0.5f * scale, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-		 0.5f * scale, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		 0.5f * scale, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		-0.5f * scale, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		-0.5f * scale, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-		// 立方体的顶面
-		-0.5f * scale,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-		 0.5f * scale,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-		 0.5f * scale,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		 0.5f * scale,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		-0.5f * scale,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		-0.5f * scale,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+		-1.0f, -0.5f,  0.5f,   0.0f, 1.0f, 0.0f,  0.0f, 0.0f,
+		-1.0f, -0.5f, -0.5f,   0.0f, 1.0f, 0.0f,  0.0f, 1.0f,
+		 1.0f, -0.5f, -0.5f,   0.0f, 1.0f, 0.0f,  1.0f, 1.0f,
+		-1.0f, -0.5f,  0.5f,   0.0f, 1.0f, 0.0f,  0.0f, 0.0f,
+		 1.0f, -0.5f, -0.5f,   0.0f, 1.0f, 0.0f,  1.0f, 1.0f,
+		 1.0f, -0.5f,  0.5f,   0.0f, 1.0f, 0.0f,  1.0f, 0.0f,
+
+		 // 立方体的顶面
+		 -1.0f,  0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
+		  1.0f,  0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 1.0f,
+		  1.0f,  0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
+		  1.0f,  0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
+		 -1.0f,  0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 0.0f,
+		 -1.0f,  0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f
 	};
 
 	//获取各个平面的数据
 	// ------------------------------------------------------------------
-	float CeilingVertices[36];
-	std::copy(vertices + 180, vertices + 216, CeilingVertices);
-	float FloorVertices[36];
-	std::copy(vertices + 144, vertices + 180, FloorVertices);
-	float LWallVertices[36];
-	std::copy(vertices + 72, vertices + 108, LWallVertices);
-	float RWallVertices[36];
-	std::copy(vertices + 108, vertices + 144, RWallVertices);
-	float FWallVertices[36];
-	std::copy(vertices + 0, vertices + 36, FWallVertices);
+	float FWallVertices[48];
+	std::copy(vertices + 0, vertices + 48, FWallVertices);
+	float LWallVertices[48];
+	std::copy(vertices + 96, vertices + 144, LWallVertices);
+	float RWallVertices[48];
+	std::copy(vertices + 144, vertices + 192, RWallVertices);
+	float FloorVertices[48];
+	std::copy(vertices + 192, vertices + 240, FloorVertices);
+	float CeilingVertices[48];
+	std::copy(vertices + 240, vertices + 288, CeilingVertices);
 
 	// 载入天花板的顶点信息
 	// ------------------------------------------------------------------
@@ -192,11 +205,14 @@ int main()
 		glBindVertexArray(CeilingVAO);
 
 		// 载入位置
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(0 * sizeof(float)));
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(0 * sizeof(float)));
 		glEnableVertexAttribArray(0);
 		// 载入法向量
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
 		glEnableVertexAttribArray(1);
+		// 载入纹理坐标
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+		glEnableVertexAttribArray(2);
 	}
 
 	//载入地板的顶点信息
@@ -212,11 +228,14 @@ int main()
 		glBindVertexArray(FloorVAO);
 
 		// 载入位置
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(0 * sizeof(float)));
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(0 * sizeof(float)));
 		glEnableVertexAttribArray(0);
 		// 载入法向量
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
 		glEnableVertexAttribArray(1);
+		// 载入纹理坐标
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+		glEnableVertexAttribArray(2);
 	}
 
 	//载入左墙的顶点信息
@@ -232,11 +251,14 @@ int main()
 		glBindVertexArray(LWallVAO);
 
 		// 载入位置
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(0 * sizeof(float)));
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(0 * sizeof(float)));
 		glEnableVertexAttribArray(0);
 		// 载入法向量
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
 		glEnableVertexAttribArray(1);
+		// 载入纹理坐标
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+		glEnableVertexAttribArray(2);
 	}
 
 	//载入右墙的顶点信息
@@ -252,11 +274,14 @@ int main()
 		glBindVertexArray(RWallVAO);
 
 		// 载入位置
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(0 * sizeof(float)));
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(0 * sizeof(float)));
 		glEnableVertexAttribArray(0);
 		// 载入法向量
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
 		glEnableVertexAttribArray(1);
+		// 载入纹理坐标
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+		glEnableVertexAttribArray(2);
 	}
 
 	//载入前墙的顶点信息
@@ -272,11 +297,14 @@ int main()
 		glBindVertexArray(FWallVAO);
 
 		// 载入位置
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(0 * sizeof(float)));
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(0 * sizeof(float)));
 		glEnableVertexAttribArray(0);
 		// 载入法向量
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
 		glEnableVertexAttribArray(1);
+		// 载入纹理坐标
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+		glEnableVertexAttribArray(2);
 	}
 
 	// 载入方块灯的顶点信息
@@ -291,8 +319,38 @@ int main()
 		glBindVertexArray(lightCubeVAO);
 
 		glBindBuffer(GL_ARRAY_BUFFER, VBO6);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
 		glEnableVertexAttribArray(0);
+	}
+
+	// 区域光源
+	float areaLightVertices[] = {
+		-1.0f * 0.1f,  0.5f * 0.1f,  0.5f * 0.1f,  0.0f,  1.0f,  0.0f,  0.0f, 0.0f,
+		-1.0f * 0.1f,  0.5f * 0.1f, -0.5f * 0.1f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f,
+		 1.0f * 0.1f,  0.5f * 0.1f, -0.5f * 0.1f,  0.0f,  1.0f,  0.0f,  1.0f, 1.0f,
+		-1.0f * 0.1f,  0.5f * 0.1f,  0.5f * 0.1f,  0.0f,  1.0f,  0.0f,  0.0f, 0.0f,
+		 1.0f * 0.1f,  0.5f * 0.1f, -0.5f * 0.1f,  0.0f,  1.0f,  0.0f,  1.0f, 1.0f,
+		 1.0f * 0.1f,  0.5f * 0.1f,  0.5f * 0.1f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f
+	};
+	unsigned int VBO7, areaLightVAO;
+	{
+		glGenVertexArrays(1, &areaLightVAO);
+		glGenBuffers(1, &VBO7);
+
+		glBindBuffer(GL_ARRAY_BUFFER, VBO7);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(areaLightVertices), areaLightVertices, GL_STATIC_DRAW);
+
+		glBindVertexArray(areaLightVAO);
+
+		// 载入位置
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(0 * sizeof(float)));
+		glEnableVertexAttribArray(0);
+		// 载入法向量
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+		glEnableVertexAttribArray(1);
+		// 载入纹理坐标
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+		glEnableVertexAttribArray(2);
 	}
 
 	// 设置天空盒
@@ -355,16 +413,25 @@ int main()
 	// -------------
 	vector<std::string> faces
 	{
-		"./skybox/right.jpg",
-		"./skybox/left.jpg",
-		"./skybox/top.jpg",
-		"./skybox/bottom.jpg",
-		"./skybox/front.jpg",
-		"./skybox/back.jpg"
+	"./skybox/px.png",
+	"./skybox/nx.png",
+	"./skybox/py.png",
+	"./skybox/ny.png",
+	"./skybox/pz.png",
+	"./skybox/nz.png"
 	};
 	unsigned int cubemapTexture = loadCubemap(faces);
 	skyboxShader.use();
 	skyboxShader.setInt("skybox", 0);
+
+	unsigned int concreteTexture = loadTexture("./textures/concreteTexture.png");
+
+	// LUT textures
+	LTC_matrices mLTC;
+	mLTC.mat1 = loadMTexture();
+	mLTC.mat2 = loadLUTTexture();
+
+	areaLightTranslate = lightPos;
 
 	// 渲染循环
 	// -----------
@@ -386,15 +453,11 @@ int main()
 		ImGui::NewFrame();
 		ImGui::Begin("panel");// Create a window called "panel" and append into it.
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-		ImGui::Text("Cornell bos is scaled by %f times", scale);
-		ImGui::Checkbox("Lock Cursor(Shortcut: L)", &lockCursor);
-		ImGui::ColorEdit3("background color", (float*)&clear_color);
+		ImGui::Checkbox("Lock Cursor(Shortcut: SPACE)", &lockCursor);
+		ImGui::Checkbox("double sided lighting", &twoSided);
 		ImGui::ColorEdit3("light color", (float*)&light_color);
-		ImGui::ColorEdit3("celling color", (float*)&celling_color);
-		ImGui::ColorEdit3("floor color", (float*)&floor_color);
-		ImGui::ColorEdit3("left color", (float*)&left_color);
-		ImGui::ColorEdit3("front color", (float*)&front_color);
-		ImGui::ColorEdit3("right color", (float*)&right_color);
+		ImGui::SliderFloat("light intensity", &intensity, 0.0f, 200.0f);
+		ImGui::SliderFloat("material roghness", &roughness, 0.0f, 1.0f);
 		ImGui::End();
 
 		// 开始渲染
@@ -408,119 +471,117 @@ int main()
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 		glm::mat4 view = camera.GetViewMatrix();
 		glm::mat4 model = glm::mat4(1.0f);
+		glm::mat3 normalMatrix = glm::mat3(model);
+		model = glm::translate(model, cubePos);
+		model = glm::scale(model, glm::vec3(1.0f));
+		lightingShader.setMat4("model", model);
+		lightingShader.setMat3("normalMatrix", normalMatrix);
+		lightingShader.setMat4("view", view);
+		lightingShader.setMat4("projection", projection);
+		lightingShader.setVec3("areaLight.points[0]", glm::vec3(-1.0f * 0.1f, 0.5f * 0.1f - 0.1f, 0.5f * 0.1f));
+		lightingShader.setVec3("areaLight.points[1]", glm::vec3(-1.0f * 0.1f, 0.5f * 0.1f - 0.1f, -0.5f * 0.1f));
+		lightingShader.setVec3("areaLight.points[2]", glm::vec3(1.0f * 0.1f, 0.5f * 0.1f - 0.1f, -0.5f * 0.1f));
+		lightingShader.setVec3("areaLight.points[3]", glm::vec3(1.0f * 0.1f, 0.5f * 0.1f - 0.1f, 0.5f * 0.1f));
+		lightingShader.setVec3("areaLight.color", light_color.x, light_color.y, light_color.z);
+		lightingShader.setFloat("areaLight.intensity", intensity);
+		lightingShader.setVec4("material.albedoRoughness", glm::vec4(color, roughness));
+		lightingShader.setFloat("areaLight.twoSided", twoSided);
+		lightingShader.setInt("LTC1", 0);
+		lightingShader.setInt("LTC2", 1);
+		lightingShader.setInt("material.diffuse", 2);
+		lightingShader.setVec3("viewPosition", camera.Position);
+		lightingShader.setVec3("areaLightTranslate", areaLightTranslate);
 
 		//绘制天花板
 		{
-			//设置光照参数
-			lightingShader.setVec3("objectColor", celling_color.x, celling_color.y, celling_color.z);
-			lightingShader.setVec3("lightColor", light_color.x, light_color.y, light_color.z);
-			lightingShader.setVec3("lightPos", lightPos);
-			lightingShader.setVec3("viewPos", camera.Position);
-
-			// view/projection 变换
-			lightingShader.setMat4("projection", projection);
-			lightingShader.setMat4("view", view);
-
-			// 世界坐标变换
-			model = glm::translate(model, cubePos);
-			model = glm::scale(model, glm::vec3(1.0f));
-			lightingShader.setMat4("model", model);
-
 			// 渲染
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, mLTC.mat1);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, mLTC.mat2);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, concreteTexture);
 			glBindVertexArray(CeilingVAO);
-			glDrawArrays(GL_TRIANGLES, 0, 36);
+			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}
 
 		// 绘制地板
 		{
-			//设置光照参数
-			lightingShader.setVec3("objectColor", floor_color.x, floor_color.y, floor_color.z);
-			lightingShader.setVec3("lightColor", light_color.x, light_color.y, light_color.z);
-			lightingShader.setVec3("lightPos", lightPos);
-			lightingShader.setVec3("viewPos", camera.Position);
-
-			// view/projection 变换
-			lightingShader.setMat4("projection", projection);
-			lightingShader.setMat4("view", view);
-
-			// 世界坐标变换
-			model = glm::mat4(1.0f);
-			model = glm::translate(model, cubePos);
-			model = glm::scale(model, glm::vec3(1.0f));
-			lightingShader.setMat4("model", model);
-
 			// 渲染
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, mLTC.mat1);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, mLTC.mat2);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, concreteTexture);
 			glBindVertexArray(FloorVAO);
-			glDrawArrays(GL_TRIANGLES, 0, 36);
+			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}
 
 		// 绘制左墙
 		{
-			//设置光照参数
-			lightingShader.setVec3("objectColor", left_color.x, left_color.y, left_color.z);
-			lightingShader.setVec3("lightColor", light_color.x, light_color.y, light_color.z);
-			lightingShader.setVec3("lightPos", lightPos);
-			lightingShader.setVec3("viewPos", camera.Position);
-
-			// view/projection 变换
-			lightingShader.setMat4("projection", projection);
-			lightingShader.setMat4("view", view);
-
-			// 世界坐标变换
-			model = glm::mat4(1.0f);
-			model = glm::translate(model, cubePos);
-			model = glm::scale(model, glm::vec3(1.0f));
-			lightingShader.setMat4("model", model);
-
 			// 渲染
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, mLTC.mat1);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, mLTC.mat2);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, concreteTexture);
 			glBindVertexArray(LWallVAO);
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
 
 		// 绘制右墙
 		{
-			//设置光照参数
-			lightingShader.setVec3("objectColor", right_color.x, right_color.y, right_color.z);
-			lightingShader.setVec3("lightColor", light_color.x, light_color.y, light_color.z);
-			lightingShader.setVec3("lightPos", lightPos);
-			lightingShader.setVec3("viewPos", camera.Position);
-
-			// view/projection 变换
-			lightingShader.setMat4("projection", projection);
-			lightingShader.setMat4("view", view);
-
-			// 世界坐标变换
-			model = glm::mat4(1.0f);
-			model = glm::translate(model, cubePos);
-			model = glm::scale(model, glm::vec3(1.0f));
-			lightingShader.setMat4("model", model);
-
 			// 渲染
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, mLTC.mat1);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, mLTC.mat2);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, concreteTexture);
 			glBindVertexArray(RWallVAO);
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
 
 		// 绘制前墙
 		{
-			//设置光照参数
-			lightingShader.setVec3("objectColor", front_color.x, front_color.y, front_color.z);
-			lightingShader.setVec3("lightColor", light_color.x, light_color.y, light_color.z);
-			lightingShader.setVec3("lightPos", lightPos);
-			lightingShader.setVec3("viewPos", camera.Position);
-
-			// view/projection 变换
-			lightingShader.setMat4("projection", projection);
-			lightingShader.setMat4("view", view);
-
-			// 世界坐标变换
-			model = glm::mat4(1.0f);
-			model = glm::translate(model, cubePos);
-			model = glm::scale(model, glm::vec3(1.0f));
-			lightingShader.setMat4("model", model);
-
 			// 渲染
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, mLTC.mat1);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, mLTC.mat2);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, concreteTexture);
 			glBindVertexArray(FWallVAO);
 			glDrawArrays(GL_TRIANGLES, 0, 36);
+		}
+
+		// 绘制地板
+		{
+			// 渲染
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, mLTC.mat1);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, mLTC.mat2);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, concreteTexture);
+			glBindVertexArray(FloorVAO);
+			glDrawArrays(GL_TRIANGLES, 0, 6);
+		}
+		// 绘制区域光源
+		{
+			areaLightShader.use();
+			glm::mat4 model(1.0f);
+			areaLightShader.setVec3("lightColor", light_color.x, light_color.y, light_color.z);
+			glm::vec3 areaLightCubeTranslate(areaLightTranslate.x, areaLightTranslate.y - 0.1f, areaLightTranslate.z);
+			model = glm::translate(model, areaLightCubeTranslate);
+			model = glm::scale(model, glm::vec3(1.0f));
+			areaLightShader.setMat4("model", model);
+			areaLightShader.setMat4("view", view);
+			areaLightShader.setMat4("projection", projection);
+			glBindVertexArray(areaLightVAO);
+			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}
 
 		// 绘制灯方块
@@ -529,12 +590,10 @@ int main()
 			lightCubeShader.setMat4("projection", projection);
 			lightCubeShader.setMat4("view", view);
 			model = glm::mat4(1.0f);
-			model = glm::translate(model, lightPos);
+			model = glm::translate(model, areaLightTranslate);
 			model = glm::scale(model, glm::vec3(0.1f)); // a smaller cube
 			lightCubeShader.setMat4("model", model);
-			lightCubeShader.setVec4("ourColor", glm::vec4(light_color.x, light_color.y, light_color.z, 1.0f));
-
-
+			lightCubeShader.setVec4("ourColor", glm::vec4(light_color.x - 0.3, light_color.y - 0.3, light_color.z - 0.3, 1.0f));
 			glBindVertexArray(lightCubeVAO);
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
@@ -595,19 +654,55 @@ void processInput(GLFWwindow* window)
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
 
-	if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
 	{
 		lockCursor = !lockCursor;
 	}
 
-	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 		camera.ProcessKeyboard(FORWARD, deltaTime);
-	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 		camera.ProcessKeyboard(BACKWARD, deltaTime);
-	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 		camera.ProcessKeyboard(LEFT, deltaTime);
-	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		camera.ProcessKeyboard(RIGHT, deltaTime);
+
+	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+	{
+		areaLightTranslate.z -= 0.001f;
+		areaLightTranslate.z = glm::clamp(areaLightTranslate.z, 1.6f, 2.4f);
+	}
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+	{
+		areaLightTranslate.z += 0.001f;
+		areaLightTranslate.z = glm::clamp(areaLightTranslate.z, 1.6f, 2.4f);
+	}
+	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+	{
+		areaLightTranslate.x -= 0.001f;
+		areaLightTranslate.x = glm::clamp(areaLightTranslate.x, -0.8f, 0.8f);
+	}
+	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+	{
+		areaLightTranslate.x += 0.001f;
+		areaLightTranslate.x = glm::clamp(areaLightTranslate.x, -0.8f, 0.8f);
+	}
+	if (glfwGetKey(window, GLFW_KEY_PAGE_UP) == GLFW_PRESS)
+	{
+		areaLightTranslate.y += 0.001f;
+		areaLightTranslate.y = glm::clamp(areaLightTranslate.y, -0.1f, 0.745f);
+	}
+	if (glfwGetKey(window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS)
+	{
+		areaLightTranslate.y -= 0.001f;
+		areaLightTranslate.y = glm::clamp(areaLightTranslate.y, -0.1f, 0.745f);
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS)
+	{
+		twoSided = !twoSided;
+	}
 }
 
 // glfw：每当窗口大小发生变化（通过操作系统或用户调整大小）时，此回调函数都会执行
@@ -730,4 +825,40 @@ unsigned int loadCubemap(vector<std::string> faces) // 加载立方体贴图函数
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE); // 设置纹理环绕方式
 
 	return textureID; // 返回纹理ID
+}
+
+unsigned int loadMTexture()
+{
+	unsigned int texture = 0;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 64, 64,
+		0, GL_RGBA, GL_FLOAT, LTC1);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+	return texture;
+}
+
+unsigned int loadLUTTexture()
+{
+	unsigned int texture = 0;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 64, 64,
+		0, GL_RGBA, GL_FLOAT, LTC2);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+	return texture;
 }

@@ -149,12 +149,15 @@
     <ClInclude Include="imstb_rectpack.h" />
     <ClInclude Include="imstb_textedit.h" />
     <ClInclude Include="imstb_truetype.h" />
+    <ClInclude Include="ltc_matrix.hpp" />
     <ClInclude Include="mesh.h" />
     <ClInclude Include="model.h" />
     <ClInclude Include="shader.h" />
     <ClInclude Include="stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="area_light_fragment.glsl" />
+    <None Include="area_light_vertex.glsl" />
     <None Include="lightcube_fragment.glsl" />
     <None Include="lightcube_vertex.glsl" />
     <None Include="lighting_fragment.glsl" />
