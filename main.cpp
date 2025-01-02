@@ -18,6 +18,7 @@
 
 #include "ltc_matrix.hpp"
 #include "curve.hpp"
+#include "sweep.hpp"
 
 #include <iostream>
 #include <vector>
@@ -57,6 +58,15 @@ static float intensity = 50.0f;
 static glm::vec3 color = glm::vec3(0.184314f, 0.309804f, 0.309804f);
 static float roughness = 0.5f;
 static bool twoSided = true;
+
+// 三个关键界面参数设置
+float rectangle_width = 0.05f;
+float rectangle_length = 0.1f;
+float ellipse_a = 0.1f;
+float ellipse_b = 0.05f;
+float circle_radius = 0.05f;
+bool ifDrawSweep = false;
+bool ifDrawCurve = true;
 
 // imgui设置
 const char* glsl_version = "#version 330";
@@ -455,6 +465,10 @@ int main()
 	Shader curve_line_shader("curve_line_vertex.glsl", "curve_line_fragment.glsl");
 	Shader curve_point_shader("curve_point_vertex.glsl", "curve_point_fragment.glsl");
 
+	// 扫描
+	sweep* mysweep = new sweep();
+	Shader sweep_shader("sweep_vertex.glsl", "sweep_fragment.glsl");
+
 	// 渲染循环
 	// -----------
 	while (!glfwWindowShouldClose(window))
@@ -484,14 +498,30 @@ int main()
 		ImGui::SliderFloat("material roghness", &roughness, 0.0f, 1.0f);
 		ImGui::End();
 
-		ImGui::Begin("dashboard of Bezier Curve");
-		ImGui::SetWindowPos(ImVec2(0, 170));
-		ImGui::SetWindowSize(ImVec2(400, 200));
-		ImGui::InputInt("control point num", &mycurve->num);
-		ImGui::SliderInt("cur control point", &curcontrolpoint, 0, mycurve->num - 1);
-		ImGui::SliderFloat("controlpoint x", (mycurve->verts + 3 * curcontrolpoint), -1.0, 1.0);
-		ImGui::SliderFloat("controlpoint y", (mycurve->verts + 3 * curcontrolpoint + 1), -1.0, 1.0);
-		ImGui::End();
+		if (ifDrawCurve)
+		{
+			ImGui::Begin("dashboard of Bezier Curve");
+			ImGui::SetWindowPos(ImVec2(0, 170));
+			ImGui::SetWindowSize(ImVec2(400, 140));
+			ImGui::InputInt("control point num", &mycurve->num);
+			ImGui::SliderInt("cur control point", &curcontrolpoint, 0, mycurve->num - 1);
+			ImGui::SliderFloat("controlpoint x", (mycurve->verts + 3 * curcontrolpoint), -1.0, 1.0);
+			ImGui::SliderFloat("controlpoint y", (mycurve->verts + 3 * curcontrolpoint + 1), -1.0, 1.0);
+			ImGui::End();
+		}
+
+		if (ifDrawSweep)
+		{
+			ImGui::Begin("dashboard of 3 section");
+			ImGui::SetWindowPos(ImVec2(0, 310));
+			ImGui::SetWindowSize(ImVec2(400, 170));
+			ImGui::SliderFloat("rectangle with", &rectangle_width, 0.01, 1.0);
+			ImGui::SliderFloat("rectangle length", &rectangle_length, 0.01, 1.0);
+			ImGui::SliderFloat("ellipse a", &ellipse_a, 0.01, 1.0);
+			ImGui::SliderFloat("ellipse b", &ellipse_b, 0.01, 1.0);
+			ImGui::SliderFloat("cirle radius", &circle_radius, 0.01, 1.0);
+			ImGui::End();
+		}
 
 		// 开始渲染
 		// ------
@@ -632,6 +662,7 @@ int main()
 		}
 
 		// 绘制贝塞尔曲线
+		if (ifDrawCurve)
 		{
 			mycurve->gencurve();
 			mycurve->update();
@@ -657,6 +688,30 @@ int main()
 
 			glBindVertexArray(curve_pointVAO);
 			glDrawArraysInstanced(GL_TRIANGLES, 0, 6, mycurve->num);
+		}
+
+		// 扫描拉伸
+		if (ifDrawSweep)
+		{
+			float* samples = mycurve->getsamples();
+			int size = mycurve->samplenum;
+			mysweep->init_curve(samples, size);
+			mysweep->set3(rectangle_width, rectangle_length, ellipse_a, ellipse_b, circle_radius);
+
+			sweep_shader.use();
+			sweep_shader.setMat4("projection", projection);
+			sweep_shader.setMat4("view", view);
+			sweep_shader.setMat4("model", glm::mat4(1.0f));
+			sweep_shader.setVec3("viewPos", camera.Position);
+			sweep_shader.setVec3("lightPos", lightPos);
+			sweep_shader.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
+
+			// 绑定纹理
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, concreteTexture); // 使用之前加载的混凝土纹理或其他纹理
+			sweep_shader.setInt("diffuseTexture", 0);
+
+			mysweep->draw();
 		}
 
 		// 绘制天空盒
@@ -770,6 +825,16 @@ void processInput(GLFWwindow* window)
 	if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS)
 	{
 		twoSided = !twoSided;
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS)
+	{
+		ifDrawCurve = !ifDrawCurve;
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
+	{
+		ifDrawSweep = !ifDrawSweep;
 	}
 }
 

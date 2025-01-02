@@ -155,6 +155,7 @@
     <ClInclude Include="model.h" />
     <ClInclude Include="shader.h" />
     <ClInclude Include="stb_image.h" />
+    <ClInclude Include="sweep.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="area_light_fragment.glsl" />
@@ -169,6 +170,8 @@
     <None Include="lighting_vertex.glsl" />
     <None Include="skybox_fragment.glsl" />
     <None Include="skybox_vertex.glsl" />
+    <None Include="sweep_fragment.glsl" />
+    <None Include="sweep_vertex.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\..\..\..\..\..\OpenGL\glad\src\glad.c" />

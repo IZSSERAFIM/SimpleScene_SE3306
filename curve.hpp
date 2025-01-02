@@ -72,12 +72,12 @@ public:
 		{
 			float t = (float)i / samplenum;
 			float x = 0, y = 0, z = 2.0f;
-			float bern;
+			float param;
 			for (int j = 0; j < num; ++j)
 			{
-				bern = getparam(num - 1, j, t);
-				x += verts[j * 3] * bern;
-				y += verts[j * 3 + 1] * bern;
+				param = getparam(num - 1, j, t);
+				x += verts[j * 3] * param;
+				y += verts[j * 3 + 1] * param;
 			}
 			samples[i * 3] = x;
 			samples[i * 3 + 1] = y;
@@ -124,6 +124,10 @@ public:
 		glVertexAttribDivisor(1, 1);
 
 		delete[] instance;
+	}
+	float* getsamples()
+	{
+		return samples;
 	}
 };
 
