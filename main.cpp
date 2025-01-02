@@ -67,6 +67,7 @@ float ellipse_b = 0.05f;
 float circle_radius = 0.05f;
 bool ifDrawSweep = false;
 bool ifDrawCurve = true;
+int type = 0;
 
 // imgui设置
 const char* glsl_version = "#version 330";
@@ -468,11 +469,35 @@ int main()
 	// 扫描
 	sweep* mysweep = new sweep();
 	Shader sweep_shader("sweep_vertex.glsl", "sweep_fragment.glsl");
-	unsigned int albedoTexture = loadTexture("./textures/pbr/rusted_iron/albedo.png");
-	unsigned int normalTexture = loadTexture("./textures/pbr/rusted_iron/normal.png");
-	unsigned int metallicTexture = loadTexture("./textures/pbr/rusted_iron/metallic.png");
-	unsigned int roughnessTexture = loadTexture("./textures/pbr/rusted_iron/roughness.png");
-	unsigned int aoTexture = loadTexture("./textures/pbr/rusted_iron/ao.png");
+	unsigned int rusted_iron_albedoTexture = loadTexture("./textures/pbr/rusted_iron/albedo.png");
+	unsigned int rusted_iron_normalTexture = loadTexture("./textures/pbr/rusted_iron/normal.png");
+	unsigned int rusted_iron_metallicTexture = loadTexture("./textures/pbr/rusted_iron/metallic.png");
+	unsigned int rusted_iron_roughnessTexture = loadTexture("./textures/pbr/rusted_iron/roughness.png");
+	unsigned int rusted_iron_aoTexture = loadTexture("./textures/pbr/rusted_iron/ao.png");
+
+	unsigned int gold_albedoTexture = loadTexture("./textures/pbr/gold/albedo.png");
+	unsigned int gold_normalTexture = loadTexture("./textures/pbr/gold/normal.png");
+	unsigned int gold_metallicTexture = loadTexture("./textures/pbr/gold/metallic.png");
+	unsigned int gold_roughnessTexture = loadTexture("./textures/pbr/gold/roughness.png");
+	unsigned int gold_aoTexture = loadTexture("./textures/pbr/gold/ao.png");
+
+	unsigned int rock_albedoTexture = loadTexture("./textures/pbr/rock/albedo.png");
+	unsigned int rock_normalTexture = loadTexture("./textures/pbr/rock/normal.png");
+	unsigned int rock_metallicTexture = loadTexture("./textures/pbr/rock/metallic.png");
+	unsigned int rock_roughnessTexture = loadTexture("./textures/pbr/rock/roughness.png");
+	unsigned int rock_aoTexture = loadTexture("./textures/pbr/rock/ao.png");
+
+	unsigned int plastic_albedoTexture = loadTexture("./textures/pbr/plastic/albedo.png");
+	unsigned int plastic_normalTexture = loadTexture("./textures/pbr/plastic/normal.png");
+	unsigned int plastic_metallicTexture = loadTexture("./textures/pbr/plastic/metallic.png");
+	unsigned int plastic_roughnessTexture = loadTexture("./textures/pbr/plastic/roughness.png");
+	unsigned int plastic_aoTexture = loadTexture("./textures/pbr/plastic/ao.png");
+
+	unsigned int wood_floor_albedoTexture = loadTexture("./textures/pbr/wood_floor/albedo.png");
+	unsigned int wood_floor_normalTexture = loadTexture("./textures/pbr/wood_floor/normal.png");
+	unsigned int wood_floor_metallicTexture = loadTexture("./textures/pbr/wood_floor/metallic.png");
+	unsigned int wood_floor_roughnessTexture = loadTexture("./textures/pbr/wood_floor/roughness.png");
+	unsigned int wood_floor_aoTexture = loadTexture("./textures/pbr/wood_floor/ao.png");
 
 	// 渲染循环
 	// -----------
@@ -497,10 +522,10 @@ int main()
 		ImGui::SetWindowSize(ImVec2(500, 170));
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
 		ImGui::Checkbox("Lock Cursor(Shortcut: SPACE)", &lockCursor);
-		ImGui::Checkbox("double sided lighting", &twoSided);
+		ImGui::Checkbox("double sided lighting on wall", &twoSided);
 		ImGui::ColorEdit3("light color", (float*)&light_color);
 		ImGui::SliderFloat("light intensity", &intensity, 0.0f, 200.0f);
-		ImGui::SliderFloat("material roghness", &roughness, 0.0f, 1.0f);
+		ImGui::SliderFloat("wall material roghness", &roughness, 0.0f, 1.0f);
 		ImGui::End();
 
 		if (ifDrawCurve)
@@ -520,6 +545,11 @@ int main()
 			ImGui::Begin("dashboard of 3 section");
 			ImGui::SetWindowPos(ImVec2(0, 310));
 			ImGui::SetWindowSize(ImVec2(400, 170));
+			const char* items[] = { "rusted_iron", "gold", "rock", "plastic", "wood_floor" };
+			static int current_item = 0; // 默认选中的索引
+			if (ImGui::Combo("Texture", &current_item, items, IM_ARRAYSIZE(items))) {
+				type = current_item;
+			}
 			ImGui::SliderFloat("rectangle with", &rectangle_width, 0.01, 1.0);
 			ImGui::SliderFloat("rectangle length", &rectangle_length, 0.01, 1.0);
 			ImGui::SliderFloat("ellipse a", &ellipse_a, 0.01, 1.0);
@@ -723,17 +753,71 @@ int main()
 			sweep_shader.setInt("roughnessMap", 3);
 			sweep_shader.setInt("aoMap", 4);
 
-			// 绑定纹理
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, albedoTexture);
-			glActiveTexture(GL_TEXTURE1);
-			glBindTexture(GL_TEXTURE_2D, normalTexture);
-			glActiveTexture(GL_TEXTURE2);
-			glBindTexture(GL_TEXTURE_2D, metallicTexture);
-			glActiveTexture(GL_TEXTURE3);
-			glBindTexture(GL_TEXTURE_2D, roughnessTexture);
-			glActiveTexture(GL_TEXTURE4);
-			glBindTexture(GL_TEXTURE_2D, aoTexture);
+			switch (type)
+			{
+			case 0:
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, rusted_iron_albedoTexture);
+				glActiveTexture(GL_TEXTURE1);
+				glBindTexture(GL_TEXTURE_2D, rusted_iron_normalTexture);
+				glActiveTexture(GL_TEXTURE2);
+				glBindTexture(GL_TEXTURE_2D, rusted_iron_metallicTexture);
+				glActiveTexture(GL_TEXTURE3);
+				glBindTexture(GL_TEXTURE_2D, rusted_iron_roughnessTexture);
+				glActiveTexture(GL_TEXTURE4);
+				glBindTexture(GL_TEXTURE_2D, rusted_iron_aoTexture);
+				break;
+			case 1:
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, gold_albedoTexture);
+				glActiveTexture(GL_TEXTURE1);
+				glBindTexture(GL_TEXTURE_2D, gold_normalTexture);
+				glActiveTexture(GL_TEXTURE2);
+				glBindTexture(GL_TEXTURE_2D, gold_metallicTexture);
+				glActiveTexture(GL_TEXTURE3);
+				glBindTexture(GL_TEXTURE_2D, gold_roughnessTexture);
+				glActiveTexture(GL_TEXTURE4);
+				glBindTexture(GL_TEXTURE_2D, gold_aoTexture);
+				break;
+			case 2:
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, rock_albedoTexture);
+				glActiveTexture(GL_TEXTURE1);
+				glBindTexture(GL_TEXTURE_2D, rock_normalTexture);
+				glActiveTexture(GL_TEXTURE2);
+				glBindTexture(GL_TEXTURE_2D, rock_metallicTexture);
+				glActiveTexture(GL_TEXTURE3);
+				glBindTexture(GL_TEXTURE_2D, rock_roughnessTexture);
+				glActiveTexture(GL_TEXTURE4);
+				glBindTexture(GL_TEXTURE_2D, rock_aoTexture);
+				break;
+			case 3:
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, plastic_albedoTexture);
+				glActiveTexture(GL_TEXTURE1);
+				glBindTexture(GL_TEXTURE_2D, plastic_normalTexture);
+				glActiveTexture(GL_TEXTURE2);
+				glBindTexture(GL_TEXTURE_2D, plastic_metallicTexture);
+				glActiveTexture(GL_TEXTURE3);
+				glBindTexture(GL_TEXTURE_2D, plastic_roughnessTexture);
+				glActiveTexture(GL_TEXTURE4);
+				glBindTexture(GL_TEXTURE_2D, plastic_aoTexture);
+				break;
+			case 4:
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, wood_floor_albedoTexture);
+				glActiveTexture(GL_TEXTURE1);
+				glBindTexture(GL_TEXTURE_2D, wood_floor_normalTexture);
+				glActiveTexture(GL_TEXTURE2);
+				glBindTexture(GL_TEXTURE_2D, wood_floor_metallicTexture);
+				glActiveTexture(GL_TEXTURE3);
+				glBindTexture(GL_TEXTURE_2D, wood_floor_roughnessTexture);
+				glActiveTexture(GL_TEXTURE4);
+				glBindTexture(GL_TEXTURE_2D, wood_floor_aoTexture);
+				break;
+			default:
+				break;
+			}
 
 			mysweep->draw();
 		}
