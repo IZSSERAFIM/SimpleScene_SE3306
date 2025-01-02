@@ -468,6 +468,11 @@ int main()
 	// 扫描
 	sweep* mysweep = new sweep();
 	Shader sweep_shader("sweep_vertex.glsl", "sweep_fragment.glsl");
+	unsigned int albedoTexture = loadTexture("./textures/pbr/rusted_iron/albedo.png");
+	unsigned int normalTexture = loadTexture("./textures/pbr/rusted_iron/normal.png");
+	unsigned int metallicTexture = loadTexture("./textures/pbr/rusted_iron/metallic.png");
+	unsigned int roughnessTexture = loadTexture("./textures/pbr/rusted_iron/roughness.png");
+	unsigned int aoTexture = loadTexture("./textures/pbr/rusted_iron/ao.png");
 
 	// 渲染循环
 	// -----------
@@ -701,15 +706,34 @@ int main()
 			sweep_shader.use();
 			sweep_shader.setMat4("projection", projection);
 			sweep_shader.setMat4("view", view);
-			sweep_shader.setMat4("model", glm::mat4(1.0f));
-			sweep_shader.setVec3("viewPos", camera.Position);
-			sweep_shader.setVec3("lightPos", lightPos);
-			sweep_shader.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
+			glm::mat4 model = glm::mat4(1.0f);
+			glm::vec3 areaLightCubeTranslate(areaLightTranslate.x, areaLightTranslate.y - 0.1f, areaLightTranslate.z);
+			sweep_shader.setMat4("model", model);
+			sweep_shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+			sweep_shader.setVec3("camPos", camera.Position);
+			sweep_shader.setVec3("lightPositions[0]", glm::vec3(-1.0f * 0.1f, 0.5f * 0.1f - 0.1f, 0.5f * 0.1f));
+			sweep_shader.setVec3("lightPositions[1]", glm::vec3(-1.0f * 0.1f, 0.5f * 0.1f - 0.1f, -0.5f * 0.1f));
+			sweep_shader.setVec3("lightPositions[2]", glm::vec3(1.0f * 0.1f, 0.5f * 0.1f - 0.1f, -0.5f * 0.1f));
+			sweep_shader.setVec3("lightPositions[3]", glm::vec3(1.0f * 0.1f, 0.5f * 0.1f - 0.1f, 0.5f * 0.1f));
+			sweep_shader.setVec3("areaLightTranslate", areaLightCubeTranslate);
+			sweep_shader.setVec3("lightColor", glm::vec3(light_color.x, light_color.y, light_color.z));
+			sweep_shader.setInt("albedoMap", 0);
+			sweep_shader.setInt("normalMap", 1);
+			sweep_shader.setInt("metallicMap", 2);
+			sweep_shader.setInt("roughnessMap", 3);
+			sweep_shader.setInt("aoMap", 4);
 
 			// 绑定纹理
 			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, concreteTexture); // 使用之前加载的混凝土纹理或其他纹理
-			sweep_shader.setInt("diffuseTexture", 0);
+			glBindTexture(GL_TEXTURE_2D, albedoTexture);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, normalTexture);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, metallicTexture);
+			glActiveTexture(GL_TEXTURE3);
+			glBindTexture(GL_TEXTURE_2D, roughnessTexture);
+			glActiveTexture(GL_TEXTURE4);
+			glBindTexture(GL_TEXTURE_2D, aoTexture);
 
 			mysweep->draw();
 		}

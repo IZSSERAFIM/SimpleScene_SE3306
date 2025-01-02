@@ -196,14 +196,29 @@ public:
 					right * profile_point.y +
 					up * profile_point.z;
 
+				// 计算切线方向（在截面上）
+				glm::vec3 profile_tangent;
+				if (j < segments)
+				{
+					profile_tangent = glm::normalize(profile_points[j + 1] - profile_point);
+				}
+				else
+				{
+					profile_tangent = glm::normalize(profile_points[0] - profile_point);
+				}
+
+				// 计算法线：截面法线和路径切线的叉积
+				glm::vec3 profile_normal = glm::normalize(glm::vec3(0.0f, profile_point.y, profile_point.z));
+				glm::vec3 normal = glm::normalize(
+					right * profile_normal.y +
+					up * profile_normal.z);
+
 				// 位置
 				vertices.push_back(transformed_point.x);
 				vertices.push_back(transformed_point.y);
 				vertices.push_back(transformed_point.z);
 
 				// 法线
-				glm::vec3 normal = glm::normalize(glm::vec3(
-					right * glm::cos(angle) + up * glm::sin(angle)));
 				vertices.push_back(normal.x);
 				vertices.push_back(normal.y);
 				vertices.push_back(normal.z);
