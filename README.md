@@ -1,149 +1,236 @@
-# 1. CG环境配置
-
-## 安装 Visual Studio 2022
-
-这里教程比较多，就不一一列出了
-
-## 按照 OpenGL 官网上的方式一步一步配置环境
-
-[opengl中文官网](https://learnopengl-cn.github.io/)
-
-## 测试是否配置成功
-
-这里有一些（~~流传下来的~~）代码，测试一下环境配置吧
-
-[上一届助教的恩泽](https://github.com/scarletfantasy/sjtu-se-cg/tree/main/demo)
-
-# 2. 如果能够成功运行，请跳过此节
-
-## 安装 vcpkg
-
-[vcpkg安装](https://github.com/microsoft/vcpkg?tab=readme-ov-file)
-
-这里和<b>本文档所有</b>内容以 Windows 为例（非 Windows 用户请自行解决）：
-
-[在 Windows 上安装 vcpkg ](https://learn.microsoft.com/zh-cn/vcpkg/get_started/get-started-vs?pivots=shell-cmd)
-
-### 克隆存储库
-
-第一步是从 GitHub 克隆 vcpkg 存储库。 存储库包含用于获取 vcpkg 可执行文件的脚本，以及由 vcpkg 社区维护的特选开放源代码库的注册表。 若要执行此操作，请运行：
-
-```
-git clone https://github.com/microsoft/vcpkg.git
-```
-vcpkg 特选注册表是一组数量超过 2000 个的开源库。 这些库已通过 vcpkg 的持续集成管道进行验证，可以协同工作。 虽然 vcpkg 存储库不包含这些库的源代码，但它保存方案和元数据，以便在系统中生成和安装它们。
-
-### 运行启动脚本
-
-现在，你已经克隆了 vcpkg 存储库，请导航到 vcpkg 目录并执行启动脚本：
-
-```
-cd vcpkg && bootstrap-vcpkg.bat
-```
-
-启动脚本执行先决条件检查并下载 vcpkg 可执行文件。
-
-就这么简单！ vcpkg 已安装并可供使用。
-
-### 将vcpkg添加到环境变量（可选）
-
-编辑 Windows 的系统环境变量
-
-在系统变量中添加变量名：`VCPKG_ROOT`，变量值：`你安装vcpkg的路径/vcpkg`，并在变量名为 `Path` 的变量值中添加 `%VCPKG_ROOT%`
-
-按住`win + R`后，输入`cmd`进入命令提示符界面，输入 `vcpkg` 后输出如下：
-
-```cmd
-usage: vcpkg <command> [--switches] [--options=values] [arguments] @response_file
-  @response_file         Contains one argument per line expanded at that location
-
-Package Installation:
-  export                 Creates a standalone deployment of installed ports
-  ......
-  ......
-
-For more help (including examples) see https://learn.microsoft.com/vcpkg
-```
-则配置成功
-
-这样就不用在vcpkg的安装目录进行操作了
-
-## 使用 vcpkg 配置开发环境
-
-打开命令行并输入（如未配置环境变量则需在vcpkg的安装目录打开命令行）：
-
-```powershell
-vcpkg integrate install
-vcpkg install glfw3:x64-windows glad:x64-windows imgui[core,opengl3-binding,glfw-binding]:x64-windows
-vcpkg install assimp:x64-windows eigen3:x64-windows
-```
-
-如果在安装过程中出现长时间卡顿或者出现类似于如下的情况：
-```
-......
-vcpkg：Could not find PowerShell Core（Building package libwebp:x64-windows failed ）
-```
-
-则进行下一步：安装 PowerShell，否则跳过
-
-<details>
-
-  <summary>安装 PowerShell（not Windows PowerShell）（注意跳过条件）</summary>
+# 平时作业2-多边形细分及粒子系统 作业报告  
 
 
-  [在 Windows 上安装 PowerShell](https://learn.microsoft.com/zh-cn/powershell/scripting/install/installing-powershell-on-windows?view=powershell-7.4#winget)
 
-  通过以下命令，可使用已发布的 `winget` 包安装 PowerShell：（推荐）
+[TOC]
 
-  搜索最新版本的 PowerShell
-  ```powershell
-  winget search Microsoft.PowerShell
-  ```
-  输出如下：
-  ```powershell
-  Name               Id                           Version   Source
-  -----------------------------------------------------------------
-  PowerShell         Microsoft.PowerShell         7.4.5.0   winget
-  PowerShell Preview Microsoft.PowerShell.Preview 7.5.0.3   winget
-  ```
-  使用 `id` 参数安装 PowerShell 或 PowerShell 预览版
-  ```powershell
-  winget install --id Microsoft.Powershell --source winget
-  winget install --id Microsoft.Powershell.Preview --source winget
-  ```
+## 具体工作
 
-  安装成功后，在开始栏搜索`powershell`，你会看到`PowerShell 7 (x64)`，打开后会看到如下输出：
-  ```powershell
-  PowerShell 7.4.5
-  PS C:\Users\username>
-  ```
+1. **环境搭建**：
+   - 使用`GLFW`和`GLAD`搭建`OpenGL`开发环境。
+   - 初始化`ImGui`用于图形用户界面。
+   - 采用`Assimp`库来加载模型
+2. **桌子模型的加载**：
+   - 在场景中导入一个桌子模型放置在黑板前面。
+3. **地型的生成和拉伸**：
+   - 生成一个矩形网格然后通过采用一个基于中点位移算法（`Midpoint Displacement Algorithm`）生成有起伏的地形模型，并将矩形地型变换为圆形地型。
+   - 将该地形表面进行扫描拉伸成有一定高度的圆台，水平放置在桌面上。
+4. **圣诞树模型的加载**：
+   - 导入圣诞树模型，放置在地形上。
+5. **雪花粒子系统的构建**：
+   - 实现场景中地台上方区域内下雪，雪粒子运动范围在圣诞树周围的球体内向下有阻尼飘落。
+   - 雪花落到与地面或圣诞树碰撞后消失。
+   - 雪花粒子采用`Koch snowflake`雪花，通过采用递归的方法生成分形图形，更贴近自然雪花样式。
+6. **圣诞树彩灯带的绘制渲染**：
+   - 围绕圣诞树生成一个螺旋形的环绕自发光彩带。
+   - 彩带发光随时间由红变紫，呈彩虹色。
+7. **光粒子系统的构建**：
+   - 在圣诞树的五角星顶部生成10000个光粒子。
+   - 光粒子向五角星的五个方向分别以60度的范围进行散射模拟五角星发光的场景。
+   - 光粒子的`alpha`通道随寿命衰减而降低，达到光强减弱的效果。
 
-  #### 注意不是`Windows PowerShell`!!!
+## 技术方案
 
-  在此 PowerShell 里继续执行之前的操作吧：
-  ```powershell
-  vcpkg integrate install
-  vcpkg install glfw3:x64-windows glad:x64-windows imgui[core,opengl3-binding,glfw-binding]:x64-windows
-  vcpkg install assimp:x64-windows eigen3:x64-windows
-  ```
+### 1. 环境搭建
 
-  若没有任何报错即安装成功
-</details>
+- **`GLFW`和`GLAD`**：用于创建`OpenGL`上下文和加载`OpenGL`函数。
+- **`ImGui`**：用于创建用户界面，方便调试和交互。
+- **`Assimp`**：用于加载相关模型文件。
 
-### 通过 vcpkg 配置环境时无需对 Visual Studio 2022 进行额外操作
+### 2. 地型的生成和拉伸
 
-# 3. 效果展示
+- **初始矩形生成**：初始直接生成`width` * `height`大小的网格。
 
-![img](SimpleScene.png)
+- **中点位移算法**：该算法通过递归地细分一个正方形区域来生成地形。它主要包括两个步骤：菱形步骤（`Diamond Step`）和方形步骤（`Square Step`）。
 
-# 4. 注意事项
+  > 1. 菱形步骤（Diamond Step）：
+  >    - 选择一个正方形的四个角点，计算它们的平均值，并在正方形的中心位置添加一个随机偏移量。
+  >    - 这个步骤的目的是在正方形的中心生成一个新的点。
+  > 2. 方形步骤（Square Step）：
+  >    - 选择一个正方形的四个边的中点，计算它们的平均值，并在这些中点位置添加一个随机偏移量。
+  >    - 这个步骤的目的是在正方形的边上生成新的点。
+  > 3. 递归细分：
+  >    - 每次细分后，正方形的尺寸减半，重复菱形和方形步骤，直到达到所需的细分级别。
+  >    
+  > 生成自然的地形高度图。通过调整参数如粗糙度（`roughness`）和高度范围（`minHeight` 和 `maxHeight`），可以生成不同风格的随机地形。
+  
+- **矩形网格变换圆形网格以及扫描拉伸**：将一个二维高度图（heightmap）投影到一个圆柱体上并通过分层的方式拉伸为圆台。
 
-1. 使用 visual studio 2022 打开项目的方式为`.sln`文件
+  > 1. 圆形投影：
+  >    - 通过计算每个点到圆心的距离，并将超出圆半径的点投影到圆的边界上，实现了从矩形到圆形的变换。
+  >    - 检查点是否在圆的外部（if (d > r)），如果是，则将其投影到圆的边界上。
+  >    - 使用比例缩放（scale = r / d）将点移动到圆的边界：新坐标 = 圆心坐标 + 圆心距 * scale; 
+  > 2. 高度计算：
+  >    - 将圆柱体分为10层，每层有一个层高的增量。
+  >    - 对于其他层，使用均匀的高度。
+  >    - 对于最顶层，其高度为顶层高度加上高度图`heightmap`的值。
+  
+- **生成圆台索引数组**：生成圆柱体网格的索引数组，从而在渲染时正确地绘制出三维模型。
 
-2. 统一使用`x64`的方式进行调试
+  > 1. 采用3层循环：
+  >
+  >    - 外层循环：遍历每一层（除了最后一层，因为它没有上层）。
+  >
+  >    - 中间循环：遍历每一行（除了最后一行，因为它没有下行）。
+  >    - 遍历每一列（除了最后一列，因为它没有右列）。
+  >
+  > 2. 索引计算：
+  >
+  >    - 当前层与下一层之间的三角形：
+  >
+  >      第一个三角形：`current`, `next`, `currentRight`
+  >
+  >      第二个三角形：`currentRight`, `next`, `nextRight`
+  >
+  >      第三个三角形：`currentRight`, `next`, `currentBottomRight`
+  >
+  >      第四个三角形：`currentBottomRight`, `next`, `nextBottomRight`
+  >
+  >    - 底部和顶部的封闭：
+  >
+  >      - 底部（第一层）：
+  >
+  >        第一个三角形：`current`, `currentRight`, `currentBottom`
+  >
+  >        第二个三角形：`currentRight`, `currentBottomRight`, `currentBottom`
+  >
+  >      - 顶部（最后一层）：
+  >
+  >          第一个三角形：`next`, `nextBottom`, `nextRight`
+  >
+  >          第二个三角形：`nextRight`, `nextBottom`, `nextBottomRight`
+  >
+  > 3. 三角形生成：
+  >
+  >    - 每个网格单元由两个三角形组成。
+  >    - 对于每个网格单元，生成六个索引，分别定义两个三角形。
+  >
+  > 4. 特殊处理：
+  >
+  >    - 底部、顶部处理：为底部层添加额外的三角形，以封闭底部。
 
-3. 修改代码后调试不通过的话，不妨试一试删除项目文件夹里的`x64`文件夹再重新进行调试
+### 3. 雪花粒子系统的构建
 
-4. 项目中的`.h` `.cpp` `.vs` `.fs`文件（不包含`glad.c`等）与环境配置无关，成功配置环境后，可以将代码复制在已成功配置环境的项目中
+- **`Koch snowflake`雪花粒子生成**：采用多边形细分技术，通过递归地细分线段生成复杂的雪花形状。
 
-5. 一切以`Canvas`上的要求为准
+  > 1. 初始形状：从一个正六边形开始。
+  > 2. 迭代细分：每次迭代将每条边分成三等分，并在中间部分添加一个“峰”来形成新的三角形。
+  > 3. 递归生成：通过多次迭代，生成复杂的Koch雪花形状。
+
+- **雪花粒子的初始化**：初始化雪花粒子位置等属性，发射粒子。
+
+  > 1. 粒子结构：位置，速度，加速度，拖拽系数（模拟水晶球中雪花缓慢下落的运动状态），旋转角度。
+  > 2. 粒子初始化：为每个粒子调用`respawnParticle`函数，设置其初始位置、速度、加速度、拖拽系数以及旋转的角度。
+  > 3. 顶点缓冲：将所有粒子的顶点数据存储到OpenGL的缓冲区中，以便在渲染时使用。
+  
+- **雪花粒子位置的更新**：结合物理模拟（如重力和拖拽）来实时更新小球位置。
+
+  > 1. 位置更新：根据加速度和速度更新粒子的位置。
+  > 2. 重力模拟：通过设置加速度为负值模拟重力。
+  > 3. 拖拽效果：通过乘以拖拽系数来模拟水晶球中的阻力。
+  > 4. 旋转：为每个雪花粒子添加旋转效果。
+  
+- **雪花粒子运动范围的判定**：将圣诞树抽象为一个圆锥，通过几何计算判定是否在圆锥内来表征雪花与圣诞树发生碰撞。
+
+  > 1. 范围判定：
+  >    - 通过几何计算与圆心距离判断粒子是否在指定的球内。
+  >    - 通过几何计算与圣诞树所在圆锥中轴线距离判断粒子是否在指定的圆锥内。
+  > 2. 重生机制：如果粒子超出指定范围，则通过`respawnParticle`函数重置其位置。
+
+### 4. 圣诞树彩灯带的绘制渲染
+
+- **灯带位置的生成**：灯带位置的生成是通过`generateLightStripVertices`函数实现的，该函数生成一个围绕圆锥体（如圣诞树）的螺旋形灯带。
+
+  > 1. 圆锥体参数：函数接收圆锥体的顶点和底部中心点，以及底部半径、螺旋圈数和每圈的点数。
+  > 2. 正交基生成：通过选择一个不平行于圆锥轴的任意向量，计算出两个正交向量`u`和`v`，用于在圆锥轴的垂直平面内生成圆周偏移。
+  > 3. 螺旋生成：通过遍历总点数，计算每个点的角度、对应的高度和半径，生成螺旋形的灯带位置。
+
+- **彩灯带彩虹色变化**：在片段着色器中实现。
+
+  > 1. 时间因子：factor是一个随时间变化的值，用于控制彩虹色的动态变化。
+  > 2. 颜色计算：使用正弦函数生成彩虹色，每个颜色分量（红、绿、蓝）通过不同的相位偏移实现。
+  > 3. 颜色输出：将计算出的彩虹色作为片段颜色输出。
+
+### 5. 光粒子系统的构建
+
+- **光粒子位置更新**：光粒子寿命随运动而衰减并重生。
+
+  > 1. 位置更新：每个粒子的位置根据其速度和时间增量`deltaTime`进行更新。这里的速度乘以2.0f，可能是为了加快粒子的移动速度。
+  > 2. 生命值更新：粒子的生命值随着时间减少。
+  > 3. 粒子重生：当粒子的生命值小于等于0时，调用`initializeParticle`函数重新初始化粒子。
+
+- **光粒子散射运动**：光粒子从五角星五个角的方向进行随机角度的散射。
+
+  > 1. 方向选择：从五个预定义的方向中随机选择一个作为粒子的初始运动方向，模拟五角星五个角散发光芒。
+  > 2. 散射角度：使用随机数生成器生成粒子的散射角度`cosTheta`和方位角`phi`，以确定粒子的运动方向。
+  > 3. 正交基生成：通过选择一个不平行于`coneAxis`的向量，计算出两个正交向量`u`和`v`，用于在`coneAxis`的垂直平面内生成运动方向。
+  > 4. 速度和位置：粒子的速度由其方向和随机因子决定，初始位置设置为`coneApex`。
+
+- **光粒子光强变化**：光粒子的光强变化通过粒子的颜色透明度来实现。
+
+  > 1. 透明度变化：粒子的透明度与其生命值成正比，随着生命值的减少，透明度也逐渐降低。
+  > 2. 视觉效果：这种透明度的变化模拟了光粒子逐渐消失的效果，增强了视觉上的动态感。
+
+### 6. 场景调整
+
+- **相机位置**：通过调整相机位置和视角，使黑板在场景中显得更大。
+
+  > 绑定↑↓←→键到`camera`类，使得在按键时能调整相机在坐标系中的位置，加上/减去相应的偏移量
+
+- **墙面位置**：通过数学计算调整墙面的位置和大小，确保场景比例协调。
+
+  > 修改立方体的坐标，手动增加宽度
+  >
+  > 将立方体`vertices`中的坐标的X坐标全部乘以`scale`，即可得到宽度为原来`scale`倍的box场景
+  >
+  > 例如(-0.5f * scale, -0.5f, -0.5f)
+  > 
+
+- **使用全局聚光灯**：模拟手电筒视角效果。
+
+  > 对黑板进行边框的特殊处理，增加一个镜面反射贴图达到边框涂有木蜡油的黑板边框的镜面反射效果。
+  >
+  > 对全局的平行光、点光源等设置方向、位置、衰减:
+  > $$
+  > F_{att}=\frac{1.0}{K_c+K_l*d+K_q*d^2}
+  > $$
+  > 对聚光设置平滑/软化边缘：
+  > $$
+  > I=\frac{\theta-\gamma}{\epsilon}
+  > $$
+  > 
+  > $$
+  > \epsilon(\mathsf{Epsilon})\text{是内(}\phi)\text{ 和外圆锥(}\gamma)\text{ 之间的余弦值差(}\epsilon=\phi-\gamma\mathrm{)。}
+  > $$
+  > 
+  
+- **天空盒绘制**：立方体贴图。
+
+  > 1. **创建立方体贴图纹理对象**：绑定到GL_TEXTURE_CUBE_MAP。
+  > 2. **上传纹理数据**： 对六个面调用 `glTexImage2D`，指定目标为 `GL_TEXTURE_CUBE_MAP_POSITIVE_X` 等。
+  > 3. **设置纹理参数**。
+  > 4. **渲染天空盒**：禁用深度缓冲的写入，移除观察矩阵中的位移部分。
+
+## 程序使用说明
+
+- **快捷键操作**：
+
+  - `↑↓←→`键：平移相机
+  - `F`键：在黑板上绘制风车。
+  - `C`键：改变风车的颜色填充。
+  - `S`键：控制风车的旋转。
+  - `E`键：控制圣诞树球体内下雪。
+  - `L`键：控制彩灯亮起以及光效。
+  - `SPACE`键：锁定或解锁鼠标光标。
+  - `esc`键：退出程序
+- **鼠标操作（锁定时不可用）**：
+  - 鼠标移动：控制相机视角。
+
+  - 鼠标滚轮：缩放视角。
+- **`imgui`面板**：
+  - 显示程序帧刷新率
+  - 锁定鼠标按钮
+  - 更换/显示颜色：
+    - 风车
+    - 各个墙面
+    - 灯光
