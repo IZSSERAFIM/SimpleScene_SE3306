@@ -519,19 +519,21 @@ int main()
 		ImGui::NewFrame();
 		ImGui::Begin("panel"); // Create a window called "panel" and append into it.
 		ImGui::SetWindowPos(ImVec2(0, 0));
-		ImGui::SetWindowSize(ImVec2(500, 170));
+		ImGui::SetWindowSize(ImVec2(500, 210));
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-		ImGui::Checkbox("Lock Cursor(Shortcut: SPACE)", &lockCursor);
+		ImGui::Checkbox("Lock Cursor (Shortcut: SPACE)", &lockCursor);
 		ImGui::Checkbox("double sided lighting on wall", &twoSided);
 		ImGui::ColorEdit3("light color", (float*)&light_color);
 		ImGui::SliderFloat("light intensity", &intensity, 0.0f, 200.0f);
 		ImGui::SliderFloat("wall material roghness", &roughness, 0.0f, 1.0f);
+		ImGui::Checkbox("Show Bezier curve (Shortcut: C)", &ifDrawCurve);
+		ImGui::Checkbox("Draw sweep (Shortcut: ENTER)", &ifDrawSweep);
 		ImGui::End();
 
 		if (ifDrawCurve)
 		{
 			ImGui::Begin("dashboard of Bezier Curve");
-			ImGui::SetWindowPos(ImVec2(0, 170));
+			ImGui::SetWindowPos(ImVec2(0, 210));
 			ImGui::SetWindowSize(ImVec2(400, 140));
 			ImGui::InputInt("control point num", &mycurve->num);
 			ImGui::SliderInt("cur control point", &curcontrolpoint, 0, mycurve->num - 1);
@@ -543,7 +545,7 @@ int main()
 		if (ifDrawSweep)
 		{
 			ImGui::Begin("dashboard of 3 section");
-			ImGui::SetWindowPos(ImVec2(0, 310));
+			ImGui::SetWindowPos(ImVec2(0, 350));
 			ImGui::SetWindowSize(ImVec2(400, 170));
 			const char* items[] = { "rusted_iron", "gold", "rock", "plastic", "wood_floor" };
 			static int current_item = 0; // 默认选中的索引

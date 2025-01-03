@@ -104,8 +104,12 @@
     <None Include="curve_point_vertex.glsl">
       <Filter>源文件</Filter>
     </None>
-    <None Include="sweep_vertex.glsl" />
-    <None Include="sweep_fragment.glsl" />
+    <None Include="sweep_fragment.glsl">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="sweep_vertex.glsl">
+      <Filter>源文件</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
