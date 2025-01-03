@@ -234,3 +234,7 @@
     - 风车
     - 各个墙面
     - 灯光
+
+## 程序运行截图
+
+![SimpleScene](SimpleScene.png)
