@@ -1,149 +1,192 @@
-# 1. CG环境配置
-
-## 安装 Visual Studio 2022
-
-这里教程比较多，就不一一列出了
-
-## 按照 OpenGL 官网上的方式一步一步配置环境
-
-[opengl中文官网](https://learnopengl-cn.github.io/)
-
-## 测试是否配置成功
-
-这里有一些（~~流传下来的~~）代码，测试一下环境配置吧
-
-[上一届助教的恩泽](https://github.com/scarletfantasy/sjtu-se-cg/tree/main/demo)
-
-# 2. 如果能够成功运行，请跳过此节
-
-## 安装 vcpkg
-
-[vcpkg安装](https://github.com/microsoft/vcpkg?tab=readme-ov-file)
-
-这里和<b>本文档所有</b>内容以 Windows 为例（非 Windows 用户请自行解决）：
-
-[在 Windows 上安装 vcpkg ](https://learn.microsoft.com/zh-cn/vcpkg/get_started/get-started-vs?pivots=shell-cmd)
-
-### 克隆存储库
-
-第一步是从 GitHub 克隆 vcpkg 存储库。 存储库包含用于获取 vcpkg 可执行文件的脚本，以及由 vcpkg 社区维护的特选开放源代码库的注册表。 若要执行此操作，请运行：
-
-```
-git clone https://github.com/microsoft/vcpkg.git
-```
-vcpkg 特选注册表是一组数量超过 2000 个的开源库。 这些库已通过 vcpkg 的持续集成管道进行验证，可以协同工作。 虽然 vcpkg 存储库不包含这些库的源代码，但它保存方案和元数据，以便在系统中生成和安装它们。
-
-### 运行启动脚本
-
-现在，你已经克隆了 vcpkg 存储库，请导航到 vcpkg 目录并执行启动脚本：
-
-```
-cd vcpkg && bootstrap-vcpkg.bat
-```
-
-启动脚本执行先决条件检查并下载 vcpkg 可执行文件。
-
-就这么简单！ vcpkg 已安装并可供使用。
-
-### 将vcpkg添加到环境变量（可选）
-
-编辑 Windows 的系统环境变量
-
-在系统变量中添加变量名：`VCPKG_ROOT`，变量值：`你安装vcpkg的路径/vcpkg`，并在变量名为 `Path` 的变量值中添加 `%VCPKG_ROOT%`
-
-按住`win + R`后，输入`cmd`进入命令提示符界面，输入 `vcpkg` 后输出如下：
-
-```cmd
-usage: vcpkg <command> [--switches] [--options=values] [arguments] @response_file
-  @response_file         Contains one argument per line expanded at that location
-
-Package Installation:
-  export                 Creates a standalone deployment of installed ports
-  ......
-  ......
-
-For more help (including examples) see https://learn.microsoft.com/vcpkg
-```
-则配置成功
-
-这样就不用在vcpkg的安装目录进行操作了
-
-## 使用 vcpkg 配置开发环境
-
-打开命令行并输入（如未配置环境变量则需在vcpkg的安装目录打开命令行）：
-
-```powershell
-vcpkg integrate install
-vcpkg install glfw3:x64-windows glad:x64-windows imgui[core,opengl3-binding,glfw-binding]:x64-windows
-vcpkg install assimp:x64-windows eigen3:x64-windows
-```
-
-如果在安装过程中出现长时间卡顿或者出现类似于如下的情况：
-```
-......
-vcpkg：Could not find PowerShell Core（Building package libwebp:x64-windows failed ）
-```
-
-则进行下一步：安装 PowerShell，否则跳过
-
-<details>
-
-  <summary>安装 PowerShell（not Windows PowerShell）（注意跳过条件）</summary>
+# 平时作业1-简单图形绘制 作业报告  
 
 
-  [在 Windows 上安装 PowerShell](https://learn.microsoft.com/zh-cn/powershell/scripting/install/installing-powershell-on-windows?view=powershell-7.4#winget)
 
-  通过以下命令，可使用已发布的 `winget` 包安装 PowerShell：（推荐）
+[TOC]
 
-  搜索最新版本的 PowerShell
-  ```powershell
-  winget search Microsoft.PowerShell
-  ```
-  输出如下：
-  ```powershell
-  Name               Id                           Version   Source
-  -----------------------------------------------------------------
-  PowerShell         Microsoft.PowerShell         7.4.5.0   winget
-  PowerShell Preview Microsoft.PowerShell.Preview 7.5.0.3   winget
-  ```
-  使用 `id` 参数安装 PowerShell 或 PowerShell 预览版
-  ```powershell
-  winget install --id Microsoft.Powershell --source winget
-  winget install --id Microsoft.Powershell.Preview --source winget
-  ```
+## 具体工作
 
-  安装成功后，在开始栏搜索`powershell`，你会看到`PowerShell 7 (x64)`，打开后会看到如下输出：
-  ```powershell
-  PowerShell 7.4.5
-  PS C:\Users\username>
-  ```
+1. **环境搭建**：
+   - 使用GLFW和GLAD搭建OpenGL开发环境。
+   - 初始化ImGui用于图形用户界面。
+2. **黑板及其边框绘制**：
+   - 在场景中相机正面的墙面上绘制一个黑板。
+   - 调整墙面的位置和大小，使场景比例协调。
+3. **风车绘制与交互**：
+   - 实现快捷键F绘制风车，C键改变风车颜色，S键控制风车旋转。
+4. **萤火虫绘制与交互**：
+   - 实现场景中随机生成一定数量的萤火虫，并且可以朝向各个方向飞行。
+   - 外观具有物理仿真效果
+5. **碰撞绘制与交互**：
+   - 实现一个简易的小球绘制，且可以通过imgui面板调整其颜色。
+   - 小球能够在场景中朝各个方向运动，当与墙面发生碰撞时运动方向会相应地改变。
 
-  #### 注意不是`Windows PowerShell`!!!
+## 技术方案
 
-  在此 PowerShell 里继续执行之前的操作吧：
-  ```powershell
-  vcpkg integrate install
-  vcpkg install glfw3:x64-windows glad:x64-windows imgui[core,opengl3-binding,glfw-binding]:x64-windows
-  vcpkg install assimp:x64-windows eigen3:x64-windows
-  ```
+### 1. 环境搭建
 
-  若没有任何报错即安装成功
-</details>
+- **GLFW和GLAD**：用于创建OpenGL上下文和加载OpenGL函数。
+- **ImGui**：用于创建用户界面，方便调试和交互。
 
-### 通过 vcpkg 配置环境时无需对 Visual Studio 2022 进行额外操作
+### 2. 黑板绘制
 
-# 3. 效果展示
+- **顶点生成**：使用数学公式计算黑板的顶点位置、法线和纹理坐标。
 
-![img](SimpleScene.png)
+  > 将黑板的宽、高以及深度分别÷2，在坐标系中按照立方体一贯的标准（参考给出的Cornell box中立方体的代码）填入即可得到
+  >
+  > (-width / 2, -height / 2,  depth / 2)
+  >
+  > (width / 2, -height / 2,  depth / 2)
+  >
+  > ...
+  >
+  > 然后是黑板的空间坐标位置，根据box的坐标`cubePos`以及边长计算得到黑板的XYZ
+  >
+  > 例如Z=cubePos.z-边长/2+黑板厚度/2（Z轴朝向相机）
+  >
+  > 最后`model`矩阵使用`glm::scale`缩放到自己原本的大小
 
-# 4. 注意事项
+- **纹理映射**：通过`stb_image`库加载黑板纹理，并应用到黑板表面。
 
-1. 使用 visual studio 2022 打开项目的方式为`.sln`文件
+  > 读取纹理图片到纹理缓冲区
+  >
+  > 设置纹理环绕方式为`GL_REPEAT`让纹理完全填充黑板区域
+  >
+  > 设置过滤方式为线性插值使得图像在放大缩小时有更好的显示效果
+  >
+  > 生成`mipmap`使得图像在远处显示时使用分辨率更小的图像显示节约程序的开销
+  >
+  > 在`fragment.glsl`中定义2个`sample2D`的纹理采样，根据渲染循环中对`uniform`变量的传入选择渲染不同的纹理传入片段着色器
+### 3. 黑板边框绘制
 
-2. 统一使用`x64`的方式进行调试
+- **顶点生成**：使用数学公式计算黑板的顶点位置、法线和纹理坐标。
 
-3. 修改代码后调试不通过的话，不妨试一试删除项目文件夹里的`x64`文件夹再重新进行调试
+  > 让边框紧贴黑板
+  >
+  > 厚度略大于黑板
 
-4. 项目中的`.h` `.cpp` `.vs` `.fs`文件（不包含`glad.c`等）与环境配置无关，成功配置环境后，可以将代码复制在已成功配置环境的项目中
+- **纹理映射**：通过`stb_image`库加载木板纹理，并应用到黑板表面。
 
-5. 一切以`Canvas`上的要求为准
+  > 使用木质纹理
+
+### 4. 风车绘制与交互
+
+- **风车顶点数据**：预定义风车的顶点数据，使用OpenGL绘制。
+
+  > 手动输入风车8个三角形的坐标
+  >
+  > 使用`GL_LINE_LOOP`绘制三角形线框
+
+- **颜色填充**：通过ImGui界面选择风车颜色，使用随机数生成器实现颜色变化。
+
+  > 使用`GL_TRIANGLES`绘制带颜色三角形
+  >
+  > 使用`GL_LINE_LOOP`绘制三角形线框
+
+- **旋转效果**：使用矩阵变换公式实现风车的旋转，旋转角度与时间和速度相关。
+
+  > 使用`glm::rotate`方法对`model`矩阵绕Z轴进行一定角度的旋转
+  >
+  > 使用`deltaTime`帧间时间确保旋转在不同设备上呈现效果相同
+
+### 5. 萤火虫绘制
+
+- **点数据**
+
+  > 使用随机数创建在`cubePos`各方向[-0.5, 0.5]的坐标
+
+- **飞行运动**
+
+  > 使用随机数比较大小来增加/减少X轴/Y轴坐标，控制向左/右以及上/下飞行
+
+- **萤火虫绘制**
+
+  > 启用`GL_PROGRAM_POINT_SIZE`控制的点大小，对片段着色器进行修改以实现圆形效果。
+  >
+  > 将 `gl_PointSize` 设置为所需的点大小
+  >
+  > 在片段着色器中，通过计算片段相对于圆心的距离，决定是否丢弃片段，从而实现圆形点。
+  >
+  > 先绘制一个黑色小圆表示萤火虫身体，再绘制2个黄色的大圆，其中最外层的颜色更淡一点，同时启用混合`glEnable(GL_BLEND)`，使用`glBlendFunc`设置混合方程增加`alpha`通道，绘制出来类似光晕，达到物理仿真的效果
+
+- **根据相机距离调整萤火虫大小**
+
+  > 在顶点着色器中：
+  >
+  > **视图空间转换**：`view * model * vec4(aPos, 1.0)`将顶点从模型空间转换到视图空间。
+  >
+  > **计算距离**：使用`length(viewPos)`计算从相机到当前点的距离。
+  >
+  > **动态调整点大小**：`gl_PointSize`根据距离动态调整。
+
+### 6. 碰撞小球绘制
+
+- **球体绘制**
+
+  > 使用**细分三角面**来生成球体的顶点数据
+  >
+  > **生成球体顶点数据**：
+  >
+  > 通过参数化的方式生成球体的顶点。球体的每个点可以通过以下公式计算：
+  >
+  > - `x = radius * sin(theta) * cos(phi)`
+  > - `y = radius * cos(theta)`
+  > - `z = radius * sin(theta) * sin(phi)`
+  >
+  > 其中：
+  >
+  > - `theta` 是垂直方向的角度（从顶部到底部）。
+  > - `phi` 是水平方向的角度（绕着垂直轴旋转）。
+  > 
+  > `GL_TRIANGLE_STRIP`渲染球体：通过为球体建立网格的方式来生成顶点数据，并使用 `glDrawArrays` 来绘制球体
+
+- **球体运动**
+
+  > 每帧都根据`deltaTime`来更新小球的位置, 将小球XYZ各个分量上的坐标加上速度*`deltaTime`使得小球在不同设备上具有相同的移动速度，并且可以在三维空间中向各个方向移动
+
+- **碰撞检测**
+
+  > 场景有6个面：天花板、地板、左、右、前、后面（后面未被绘制）。我们需要检测小球是否与这些面碰撞，并在碰撞时反转速度方向。
+  >
+  > 当检测到小球的中心点加/减小球半径大于/小于场景某个面的位置，将小球速度对应的某个轴的分量变为其相反数
+
+### 7. 场景调整
+
+- **相机位置**：通过调整相机位置和视角，使黑板在场景中显得更大。
+
+  > 绑定↑↓←→键到`camera`类，使得在按键时能调整相机在坐标系中的位置，加上/减去相应的偏移量
+
+- **墙面位置**：通过数学计算调整墙面的位置和大小，确保场景比例协调。
+
+  > 修改立方体的坐标，手动增加宽度
+  >
+  > 将立方体`vertices`中的坐标的X坐标全部乘以`scale`，即可得到宽度为原来`scale`倍的box场景
+  >
+  > 例如(-0.5f * scale, -0.5f, -0.5f)
+
+## 程序使用说明
+
+- **快捷键操作**：
+  
+  - `↑↓←→`键：平移相机
+  - `F`键：在黑板上绘制风车。
+  - `C`键：改变风车的颜色填充。
+  - `S`键：控制风车的旋转。
+  - `L`键：锁定或解锁鼠标光标。
+  - `esc`键：退出程序
+  
+- **鼠标操作（锁定时不可用）**：
+  - 鼠标移动：控制相机视角。
+  
+  - 鼠标滚轮：缩放视角。
+  
+- **`imgui`面板**：
+  - 显示程序帧刷新率
+  - 锁定鼠标按钮
+  - 绘制碰撞球体/萤火虫
+  - 更换/显示颜色：
+    - 风车
+    - 背景
+    - 各个墙面
+    - 灯光
+    - 碰撞球体
